@@ -9,4 +9,9 @@ import "github.com/rayguo17/go-socks/user"
 type AcpCon struct {
 	owner      *user.User
 	bytesCount int
+	//identify: "address:port"
+}
+
+func NewCon() {
+
 }

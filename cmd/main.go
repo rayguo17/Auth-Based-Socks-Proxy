@@ -10,6 +10,11 @@ import (
 	"strings"
 )
 
+const (
+	Auth_None     int = 1
+	Auth_Username     = 2
+)
+
 func main() {
 	fmt.Println("Hello world")
 
@@ -18,7 +23,8 @@ func main() {
 		fmt.Println("Error listening", err.Error())
 		return
 	}
-
+	// do some initialization
+	//main routine do something.
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -30,37 +36,44 @@ func main() {
 	}
 }
 
-var Supported_Auth_Method []byte = []byte{
+var SupportedAuthMethod []byte = []byte{
 	0, 1,
 }
 
 func acceptHandler(conn net.Conn) {
-	//first initiate socks handshake
-	//1. receive auth message:
 	buf := make([]byte, 512)
-	len, err := conn.Read(buf)
+	initLen, err := conn.Read(buf)
 	if err != nil {
 		fmt.Println("err read", err.Error())
 		return
 	}
-	fmt.Printf("%d bytes received!\n", len)
-	//pp.Println(buf)
-	//parse the buf by iterate
+	fmt.Printf("%d bytes received!\n", initLen)
 	count := 0
-	//support how many authenticate method??? maybe for now only user and none??
-	// add user authentication later, we use config file to store user information.
-	//used_auth_method := make([]byte,len)
-	for i, b := range buf {
-		if i == 0 && b != 5 {
+	authMethod := make([]int, 0)
+	for i := 0; i < initLen; i++ {
+		if i == 0 && buf[i] != 5 {
 			fmt.Println("unsportted version! ending")
 			return
-			//should be a go to if later we seperate authentication and accept handling
 		}
+		if i == 1 {
+			count = int(buf[i]) //how many method supported
+		}
+		if i > 1 {
+			//check supported method
+			if !checkAuthMethod(buf[i]) {
+				fmt.Println("auth method not supported,ending...")
+				return
+			}
+			//supported auth method. choose the bigger one
+			authMethod = append(authMethod, int(buf[i]))
 
-		//fmt.Printf("index: %v, value: %v\n", i, b)
-		count++
-		if count == len {
-			break
+		}
+	}
+	//loop over choose which one to support
+	chosenAuthMethod := 0
+	for i := 0; i < len(authMethod); i++ {
+		if authMethod[i] > chosenAuthMethod {
+			chosenAuthMethod = authMethod[i]
 		}
 	}
 
@@ -70,12 +83,23 @@ func acceptHandler(conn net.Conn) {
 		directly support 0
 
 	*/
-	_, err = conn.Write([]byte{5, 0})
-	if err != nil {
-		return
+	switch chosenAuthMethod {
+	case 0:
+		_, err = conn.Write([]byte{5, 1, 0})
+		if err != nil {
+			return
+		}
+	case 1:
+		_, err = conn.Write([]byte{5, 1, 1})
+		if err != nil {
+			return
+		}
 	}
-	//3. authentication phase (skip for now)
 
+	//3. authentication phase (skip for now)
+	if chosenAuthMethod == 1 {
+		handleAuth(conn)
+	}
 	//4. request phase
 	cmdBuf := make([]byte, 512)
 	cmdLen, err := conn.Read(cmdBuf)
@@ -131,6 +155,19 @@ func acceptHandler(conn net.Conn) {
 	}()
 	<-ctx.Done()
 	return
+}
+func handleAuth(conn net.Conn) {
+
+}
+func checkAuthMethod(method byte) bool {
+	found := false
+	for i := 0; i < len(SupportedAuthMethod); i++ {
+		if method == SupportedAuthMethod[i] {
+			found = true
+		}
+	}
+	return found
+
 }
 
 //browser tends to send multiple tcp connections, so there will be parallel thread using same instance.
