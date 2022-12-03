@@ -7,9 +7,10 @@ package connections
 import "github.com/rayguo17/go-socks/user"
 
 type AcpCon struct {
+	id         string // identifier ("address:port")
 	owner      *user.User
 	bytesCount int
-	//identify: "address:port"
+	AuthChan   chan bool
 }
 
 func NewCon() {

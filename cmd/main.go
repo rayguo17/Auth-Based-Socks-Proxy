@@ -4,15 +4,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/k0kubun/pp/v3"
+	"github.com/rayguo17/go-socks/socks"
 	"io"
+	"log"
 	"net"
 	"strconv"
 	"strings"
-)
-
-const (
-	Auth_None     int = 1
-	Auth_Username     = 2
 )
 
 func main() {
@@ -36,10 +33,6 @@ func main() {
 	}
 }
 
-var SupportedAuthMethod []byte = []byte{
-	0, 1,
-}
-
 func acceptHandler(conn net.Conn) {
 	buf := make([]byte, 512)
 	initLen, err := conn.Read(buf)
@@ -49,57 +42,63 @@ func acceptHandler(conn net.Conn) {
 	}
 	fmt.Printf("%d bytes received!\n", initLen)
 	count := 0
-	authMethod := make([]int, 0)
-	for i := 0; i < initLen; i++ {
-		if i == 0 && buf[i] != 5 {
-			fmt.Println("unsportted version! ending")
-			return
-		}
-		if i == 1 {
-			count = int(buf[i]) //how many method supported
-		}
-		if i > 1 {
-			//check supported method
-			if !checkAuthMethod(buf[i]) {
-				fmt.Println("auth method not supported,ending...")
-				return
-			}
-			//supported auth method. choose the bigger one
-			authMethod = append(authMethod, int(buf[i]))
 
-		}
+	source, err := socks.FromByte(buf[:initLen], socks.HandShakeRequest)
+
+	if err != nil {
+		log.Fatal(err)
 	}
+	if _, ok := source.(*socks.HandshakeReq); !ok {
+		log.Fatal("socks handshake mapping failed returning")
+		return
+	}
+	handShakeReq := source.(*socks.HandshakeReq)
 	//loop over choose which one to support
 	chosenAuthMethod := 0
-	for i := 0; i < len(authMethod); i++ {
-		if authMethod[i] > chosenAuthMethod {
-			chosenAuthMethod = authMethod[i]
+	for i := 0; i < len(handShakeReq.AuthMethod); i++ {
+		if int(handShakeReq.AuthMethod[i]) > chosenAuthMethod {
+			chosenAuthMethod = int(handShakeReq.AuthMethod[i])
 		}
 	}
-
 	//2. then construct the response to the message bytes
 	/*
 		choose from supported method (later)
 		directly support 0
 
 	*/
+	pp.Println(handShakeReq)
+	log.Printf("chosen auth method: %d", chosenAuthMethod)
 	switch chosenAuthMethod {
 	case 0:
-		_, err = conn.Write([]byte{5, 1, 0})
+		_, err = conn.Write([]byte{5, 0})
 		if err != nil {
 			return
 		}
-	case 1:
-		_, err = conn.Write([]byte{5, 1, 1})
+	case 2:
+		_, err = conn.Write([]byte{5, 2})
 		if err != nil {
 			return
 		}
 	}
-
 	//3. authentication phase (skip for now)
-	if chosenAuthMethod == 1 {
-		handleAuth(conn)
+	authBuf := make([]byte, 512)
+	authLen, err := conn.Read(authBuf)
+	if err != nil {
+		log.Fatal("Read auth message failed.")
 	}
+	//register tmp to received feedback.
+
+	source, err = socks.FromByte(authBuf[:authLen], socks.AuthRequest)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if _, ok := source.(*socks.AuthReq); !ok {
+		log.Fatal("socks authReq mapping failed returning")
+		return
+	}
+	authReq := source.(*socks.AuthReq)
+	//use message to build a connection.
+	return
 	//4. request phase
 	cmdBuf := make([]byte, 512)
 	cmdLen, err := conn.Read(cmdBuf)
@@ -155,19 +154,6 @@ func acceptHandler(conn net.Conn) {
 	}()
 	<-ctx.Done()
 	return
-}
-func handleAuth(conn net.Conn) {
-
-}
-func checkAuthMethod(method byte) bool {
-	found := false
-	for i := 0; i < len(SupportedAuthMethod); i++ {
-		if method == SupportedAuthMethod[i] {
-			found = true
-		}
-	}
-	return found
-
 }
 
 //browser tends to send multiple tcp connections, so there will be parallel thread using same instance.
