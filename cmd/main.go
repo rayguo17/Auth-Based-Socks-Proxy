@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/k0kubun/pp/v3"
+	"github.com/rayguo17/go-socks/Backdoor"
 	"github.com/rayguo17/go-socks/socks"
+	"github.com/rayguo17/go-socks/user"
 	"io"
 	"log"
 	"net"
@@ -22,6 +24,8 @@ func main() {
 	}
 	// do some initialization
 	//main routine do something.
+	go user.UM.MainRoutine()
+	go Backdoor.BackDoorRoutine()
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -37,7 +41,7 @@ func acceptHandler(conn net.Conn) {
 	buf := make([]byte, 512)
 	initLen, err := conn.Read(buf)
 	if err != nil {
-		fmt.Println("err read", err.Error())
+		log.Println(err)
 		return
 	}
 	fmt.Printf("%d bytes received!\n", initLen)
@@ -46,10 +50,11 @@ func acceptHandler(conn net.Conn) {
 	source, err := socks.FromByte(buf[:initLen], socks.HandShakeRequest)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		return
 	}
 	if _, ok := source.(*socks.HandshakeReq); !ok {
-		log.Fatal("socks handshake mapping failed returning")
+		log.Println("socks handshake mapping failed returning")
 		return
 	}
 	handShakeReq := source.(*socks.HandshakeReq)
@@ -72,11 +77,13 @@ func acceptHandler(conn net.Conn) {
 	case 0:
 		_, err = conn.Write([]byte{5, 0})
 		if err != nil {
+			log.Println(err)
 			return
 		}
 	case 2:
 		_, err = conn.Write([]byte{5, 2})
 		if err != nil {
+			log.Println(err)
 			return
 		}
 	}
@@ -84,28 +91,53 @@ func acceptHandler(conn net.Conn) {
 	authBuf := make([]byte, 512)
 	authLen, err := conn.Read(authBuf)
 	if err != nil {
-		log.Fatal("Read auth message failed.")
+		log.Println(err)
+		return
 	}
 	//register tmp to received feedback.
 
 	source, err = socks.FromByte(authBuf[:authLen], socks.AuthRequest)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		return
 	}
 	if _, ok := source.(*socks.AuthReq); !ok {
 		log.Fatal("socks authReq mapping failed returning")
 		return
 	}
 	authReq := source.(*socks.AuthReq)
-	//use message to build a connection.
-	return
-	//4. request phase
+	acpCon, err := socks.Authenticate(authReq, conn)
+	//
+
+	if err != nil {
+		log.Println(err)
+		conn.Write([]byte{1, 1})
+		return
+	}
+	_, err = conn.Write([]byte{1, 0})
+	if err != nil {
+		acpCon.ManualClose()
+		return
+	}
+	//TODO://4. request phase
 	cmdBuf := make([]byte, 512)
 	cmdLen, err := conn.Read(cmdBuf)
 	if err != nil {
+		log.Println(err)
 		return
 	}
-
+	source, err = socks.FromByte(cmdBuf[:cmdLen], socks.ClientCommand)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	if _, ok := source.(*socks.ClientCmd); !ok {
+		log.Fatal("socks authReq mapping failed returning")
+		return
+	}
+	clientCmd := source.(*socks.ClientCmd)
+	pp.Println(clientCmd)
+	return
 	address := strings.Builder{}
 
 	//only supporting bind command for now.

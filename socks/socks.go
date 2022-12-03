@@ -3,6 +3,8 @@ package socks
 import (
 	"errors"
 	"fmt"
+	"github.com/rayguo17/go-socks/user"
+	"net"
 )
 
 //how to encapsulate protocol??
@@ -18,6 +20,7 @@ const (
 var SupportedAuthMethod []byte = []byte{
 	0, 2,
 }
+var SupportedCmd []byte = []byte{1}
 
 type HandshakeReq struct {
 	Version    uint8
@@ -70,7 +73,7 @@ func FromByte(buf []byte, msgType int) (interface{}, error) {
 	case AuthResponse:
 		fmt.Println("building Auth Response")
 	case ClientCommand:
-		fmt.Println("building client command")
+		return buildCC(buf)
 	case ServerResponse:
 		fmt.Println("building server response")
 	default:
@@ -97,6 +100,29 @@ func FromStruct(target interface{}, msgType int) ([]byte, error) {
 
 	}
 	return nil, nil
+}
+func Authenticate(authReq *AuthReq, conn net.Conn) (*user.AcpCon, error) {
+	id := conn.RemoteAddr().String()
+	username := string(authReq.Uname)
+	passwd := string(authReq.Passwd)
+	acpCon := user.NewCon(id, conn, username, passwd, user.AuthDone)
+	user.UM.AddCon(&acpCon)
+	authStatus := <-acpCon.AuthChan
+	if !authStatus {
+		return nil, errors.New("authentication failed")
+	}
+	fmt.Println("acpCon testing", acpCon)
+
+	return &acpCon, nil
+}
+func buildCC(buf []byte) (*ClientCmd, error) {
+	res := &ClientCmd{}
+	if buf[0] != 5 {
+		return nil, errors.New(fmt.Sprintf("socks version: %d not supported\n", buf[0]))
+	}
+	res.Version = buf[0]
+
+	return res, nil
 }
 func buildAR(buf []byte) (*AuthReq, error) {
 	//interact with user

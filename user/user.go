@@ -2,9 +2,9 @@ package user
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/k0kubun/pp/v3"
-	"github.com/rayguo17/go-socks/connections"
 	"log"
 	"os"
 )
@@ -16,21 +16,22 @@ type User struct {
 }
 
 //encode cmd into string. parse
-type UserManager struct {
+type Manager struct {
 	Users          []*User
-	CmdChannel     chan string                      //for read write
-	AcpConnections map[string][]*connections.AcpCon //hash map, each user have a acp connections list.
+	CmdChannel     chan string          //for read write
+	AcpConnections map[string][]*AcpCon //hash map, each user have a acp connections list.
 	printChannel   chan bool
+	AddConChannel  chan *AcpCon //after assertion need to notify, once notify done, can be continued.
+	DelConChannel  chan string  // use string to delete
 }
 
-var Users []*User
+var UM Manager
 var filePath string = "./user.json"
 
-func (um *UserManager) ListUser() {
+func (um *Manager) ListUser() {
 	um.printChannel <- true
-
 }
-func (um *UserManager) MainRoutine() {
+func (um *Manager) MainRoutine() {
 	for {
 		select {
 		case command := <-um.CmdChannel:
@@ -38,15 +39,55 @@ func (um *UserManager) MainRoutine() {
 			um.handleCommand(command)
 		case <-um.printChannel:
 			pp.Println(um.AcpConnections)
+		case acpCon := <-um.AddConChannel:
+			um.handleAdd(acpCon)
 		}
 	}
 
 }
-func (um *UserManager) handleCommand(cmd string) {
+func (um *Manager) DelCon(id string) {
+	um.DelConChannel <- id
+}
+func (um *Manager) handleDel(id string) {
+
+}
+func (um *Manager) AddCon(con *AcpCon) {
+	um.AddConChannel <- con
+}
+func (um *Manager) handleAdd(acpCon *AcpCon) {
+	user, err := um.findUserByName(acpCon.username)
+	if err != nil {
+		acpCon.AuthChan <- false
+		return
+	}
+	if user.Password != acpCon.passwd {
+		acpCon.AuthChan <- false
+		return
+	}
+	acpCon.owner = user
+	if val, ok := um.AcpConnections[user.Username]; !ok {
+		um.AcpConnections[user.Username] = make([]*AcpCon, 0)
+		um.AcpConnections[user.Username] = append(val, acpCon)
+	} else {
+		um.AcpConnections[user.Username] = append(val, acpCon)
+	}
+	acpCon.AuthChan <- true
+}
+func (um *Manager) findUserByName(uname string) (*User, error) {
+	for i := 0; i < len(um.Users); i++ {
+		if um.Users[i].Username == uname {
+			return um.Users[i], nil
+		}
+	}
+	return nil, errors.New("user not found")
+}
+func (um *Manager) handleCommand(cmd string) {
 	fmt.Println("cmd received:", cmd)
 }
 func init() {
 	//read from json file, then form user group
+	var Users []*User
+
 	fileBytes, err := os.ReadFile(filePath)
 	if err != nil {
 		log.Fatal("read file failed")
@@ -56,5 +97,12 @@ func init() {
 	if err != nil {
 		log.Fatal("unmarshal failed", err.Error())
 	}
-	//pp.Println(Users)
+	UM.Users = Users
+	//initialize UM channel
+	UM.DelConChannel = make(chan string)
+	UM.AddConChannel = make(chan *AcpCon)
+	UM.printChannel = make(chan bool)
+	UM.CmdChannel = make(chan string)
+	UM.AcpConnections = make(map[string][]*AcpCon)
+	//pp.Println(UM)
 }
