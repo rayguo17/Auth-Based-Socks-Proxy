@@ -71,8 +71,8 @@ func acceptHandler(conn net.Conn) {
 		directly support 0
 
 	*/
-	pp.Println(handShakeReq)
-	log.Printf("chosen auth method: %d", chosenAuthMethod)
+	//pp.Println(handShakeReq)
+	//log.Printf("chosen auth method: %d", chosenAuthMethod)
 	switch chosenAuthMethod {
 	case 0:
 		_, err = conn.Write([]byte{5, 0})
@@ -88,35 +88,45 @@ func acceptHandler(conn net.Conn) {
 		}
 	}
 	//3. authentication phase (skip for now)
-	authBuf := make([]byte, 512)
-	authLen, err := conn.Read(authBuf)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	//register tmp to received feedback.
+	var acpCon *user.AcpCon
+	if chosenAuthMethod == 2 {
+		authBuf := make([]byte, 512)
+		authLen, err := conn.Read(authBuf)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		//register tmp to received feedback.
 
-	source, err = socks.FromByte(authBuf[:authLen], socks.AuthRequest)
-	if err != nil {
-		log.Println(err)
-		return
+		source, err = socks.FromByte(authBuf[:authLen], socks.AuthRequest)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		if _, ok := source.(*socks.AuthReq); !ok {
+			log.Fatal("socks authReq mapping failed returning")
+			return
+		}
+		authReq := source.(*socks.AuthReq)
+		acpCon, err = socks.Authenticate(authReq, conn)
+		if err != nil {
+			log.Println(err)
+			conn.Write([]byte{1, 1})
+			return
+		}
+	} else {
+		//create anonymous account route
+		acpCon, err = socks.Anonymous(conn)
+		if err != nil {
+			log.Println(err)
+			conn.Write([]byte{1, 1})
+			return
+		}
 	}
-	if _, ok := source.(*socks.AuthReq); !ok {
-		log.Fatal("socks authReq mapping failed returning")
-		return
-	}
-	authReq := source.(*socks.AuthReq)
-	acpCon, err := socks.Authenticate(authReq, conn)
-	//
-
-	if err != nil {
-		log.Println(err)
-		conn.Write([]byte{1, 1})
-		return
-	}
+	defer acpCon.ManualClose() //close on return
 	_, err = conn.Write([]byte{1, 0})
 	if err != nil {
-		acpCon.ManualClose()
+		log.Println(err)
 		return
 	}
 	//TODO://4. request phase
@@ -124,6 +134,7 @@ func acceptHandler(conn net.Conn) {
 	cmdLen, err := conn.Read(cmdBuf)
 	if err != nil {
 		log.Println(err)
+
 		return
 	}
 	source, err = socks.FromByte(cmdBuf[:cmdLen], socks.ClientCommand)
@@ -137,6 +148,7 @@ func acceptHandler(conn net.Conn) {
 	}
 	clientCmd := source.(*socks.ClientCmd)
 	pp.Println(clientCmd)
+	socks.CommandHandle(clientCmd, acpCon)
 	return
 	address := strings.Builder{}
 

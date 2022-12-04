@@ -3,6 +3,7 @@ package socks
 import (
 	"errors"
 	"fmt"
+	"github.com/k0kubun/pp/v3"
 	"github.com/rayguo17/go-socks/user"
 	"net"
 )
@@ -15,6 +16,20 @@ const (
 	AuthResponse          = 4
 	ClientCommand         = 5
 	ServerResponse        = 6
+)
+
+//Manager Address through interface??
+const (
+	Ipv4Address   int = 1
+	DomainAddress     = 3
+	Ipv6Address       = 4
+)
+
+//Manage command through intercace?
+const (
+	CONNECT uint8 = 1
+	BIND    uint8 = 2
+	UDPASSO uint8 = 3
 )
 
 var SupportedAuthMethod []byte = []byte{
@@ -101,6 +116,17 @@ func FromStruct(target interface{}, msgType int) ([]byte, error) {
 	}
 	return nil, nil
 }
+func CommandHandle(cmd *ClientCmd, con *user.AcpCon) error {
+	switch cmd.Cmd {
+	case BIND:
+		fmt.Println("BIND command")
+	case CONNECT:
+		fmt.Println("CONNECT command")
+	case UDPASSO:
+		fmt.Println("UDP ASSOCIATE command")
+	}
+	return nil
+}
 func Authenticate(authReq *AuthReq, conn net.Conn) (*user.AcpCon, error) {
 	id := conn.RemoteAddr().String()
 	username := string(authReq.Uname)
@@ -111,17 +137,67 @@ func Authenticate(authReq *AuthReq, conn net.Conn) (*user.AcpCon, error) {
 	if !authStatus {
 		return nil, errors.New("authentication failed")
 	}
-	fmt.Println("acpCon testing", acpCon)
+	//fmt.Println("acpCon testing", acpCon)
 
 	return &acpCon, nil
 }
+func Anonymous(conn net.Conn) (*user.AcpCon, error) {
+	id := conn.RemoteAddr().String()
+	username := "anonymous"
+	passwd := ""
+	acpCon := user.NewCon(id, conn, username, passwd, user.AuthDone)
+	user.UM.AddCon(&acpCon)
+	authStatus := <-acpCon.AuthChan
+	if !authStatus {
+		return nil, errors.New("authentication failed")
+	}
+	return &acpCon, nil
+}
+
 func buildCC(buf []byte) (*ClientCmd, error) {
+	pp.Println(buf)
 	res := &ClientCmd{}
 	if buf[0] != 5 {
 		return nil, errors.New(fmt.Sprintf("socks version: %d not supported\n", buf[0]))
 	}
 	res.Version = buf[0]
+	if !checkCmd(buf[1]) {
+		return nil, errors.New(fmt.Sprintf("socks command: %d not supported\n", buf[1]))
+	}
+	res.Cmd = buf[1]
+	switch int(buf[3]) {
+	case Ipv4Address:
+		if len(buf) != 4+4+2 {
+			return nil, errors.New(fmt.Sprintf("client command length does not match address type: %d, expect: %d, got: %d", Ipv4Address, 10, len(buf)))
+		}
+		res.Atyp = buf[3]
+		res.DstAddr = make([]byte, 0, 4)
+		for i := 0; i < 4; i++ {
+			res.DstAddr = append(res.DstAddr, buf[4+i])
+		}
+	case DomainAddress:
+		addressLen := int(buf[4])
+		if len(buf) != 5+addressLen+2 {
+			return nil, errors.New(fmt.Sprintf("client command length does not match address type: %d, expect: %d, got: %d", DomainAddress, 7+addressLen, len(buf)))
+		}
+		res.Atyp = buf[3]
 
+		res.DstAddr = make([]byte, 0, addressLen)
+		for i := 0; i < addressLen; i++ {
+			res.DstAddr = append(res.DstAddr, buf[5+i])
+		}
+	case Ipv6Address:
+		if len(buf) != 4+16+2 {
+			return nil, errors.New(fmt.Sprintf("client command length does not match address type: %d, expect: %d, got: %d", Ipv6Address, 22, len(buf)))
+		}
+		res.Atyp = buf[3]
+		res.DstAddr = make([]byte, 0, 16)
+		for i := 0; i < 16; i++ {
+			res.DstAddr = append(res.DstAddr)
+		}
+	}
+	bufLen := len(buf)
+	res.DstPort = [2]byte{buf[bufLen-2], buf[bufLen-1]}
 	return res, nil
 }
 func buildAR(buf []byte) (*AuthReq, error) {
@@ -171,6 +247,14 @@ func buildHSR(buf []byte) (*HandshakeReq, error) {
 	}
 	res.AuthCount = uint8(len(res.AuthMethod))
 	return res, nil
+}
+func checkCmd(cmd byte) bool {
+	for i := 0; i < len(SupportedCmd); i++ {
+		if SupportedCmd[i] == cmd {
+			return true
+		}
+	}
+	return false
 }
 func CheckAuthMethod(method byte) bool {
 	found := false

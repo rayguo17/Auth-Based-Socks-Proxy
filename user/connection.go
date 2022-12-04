@@ -7,6 +7,7 @@ package user
 import (
 	"log"
 	"net"
+	"time"
 )
 
 const (
@@ -14,6 +15,13 @@ const (
 	CmdRecv      = 2
 	Working      = 3
 	Dead         = 4
+)
+
+//COMMAND TYPE
+const (
+	Connect int = 1
+	Bind        = 2
+	UdpAsso     = 3
 )
 const BUFMAX = 4096
 
@@ -30,13 +38,21 @@ type AcpCon struct {
 	writeChan       chan []byte
 	endChan         chan bool
 	manualCloseChan chan bool
+	cmdType         int
+	cmdClosedChan   chan bool
+	acpDelChan      chan bool
+	cmdExecutor     Cmd
 }
 
 //could be manually killed or by closing the socket.
 func (acpCon *AcpCon) ManualClose() {
 	acpCon.manualCloseChan <- true
 }
+func (acpCon *AcpCon) ExecuteCmd() {
 
+}
+
+//detail routine should be maintain by sub type
 func (acpCon *AcpCon) MainRoutine() {
 	for {
 		select {
@@ -72,7 +88,28 @@ func (acpCon *AcpCon) ReadRoutine() {
 	}
 }
 func (acpCon *AcpCon) handleClose() {
-
+	//TODO:
+	//end sub routine (if exist), delete from user manager.
+	if acpCon.cmdExecutor != nil {
+		acpCon.cmdExecutor.Close()
+		//
+		select {
+		case <-acpCon.cmdClosedChan:
+			log.Println("sub executor delete success")
+		case <-time.After(5 * time.Second):
+			log.Println("subExec delete timeout, quiting anyway...")
+		}
+	}
+	//delete from  um
+	UM.DelCon(acpCon.username + "|" + acpCon.id)
+	//should add a timeout don't wait forever
+	select {
+	case <-acpCon.acpDelChan:
+		log.Println("acp con delete success")
+	case <-time.After(5 * time.Second):
+		log.Println("delete time out quiting anyway")
+	}
+	return
 }
 func NewCon(id string, conn net.Conn, username string, passwd string, status int) AcpCon {
 	return AcpCon{
@@ -80,11 +117,13 @@ func NewCon(id string, conn net.Conn, username string, passwd string, status int
 		AuthChan:   make(chan bool),
 		readChan:   make(chan []byte),
 		writeChan:  make(chan []byte),
+		acpDelChan: make(chan bool),
 		conn:       conn,
 		bytesCount: 0,
 		owner:      nil,
-		username:   username,
-		passwd:     passwd,
-		status:     status,
+		//should have a auther interface...
+		username: username,
+		passwd:   passwd,
+		status:   status,
 	}
 }

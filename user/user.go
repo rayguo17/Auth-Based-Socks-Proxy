@@ -7,6 +7,7 @@ import (
 	"github.com/k0kubun/pp/v3"
 	"log"
 	"os"
+	"strings"
 )
 
 //upper case so json pkg have access to field
@@ -18,8 +19,8 @@ type User struct {
 //encode cmd into string. parse
 type Manager struct {
 	Users          []*User
-	CmdChannel     chan string          //for read write
-	AcpConnections map[string][]*AcpCon //hash map, each user have a acp connections list.
+	CmdChannel     chan string                   //for read write
+	AcpConnections map[string]map[string]*AcpCon //hash map, each user have a acp connections list.
 	printChannel   chan bool
 	AddConChannel  chan *AcpCon //after assertion need to notify, once notify done, can be continued.
 	DelConChannel  chan string  // use string to delete
@@ -49,6 +50,20 @@ func (um *Manager) DelCon(id string) {
 	um.DelConChannel <- id
 }
 func (um *Manager) handleDel(id string) {
+	//username|ip:port
+	idArr := strings.Split(id, "|")
+	if user, ok := um.AcpConnections[idArr[0]]; ok {
+		if cons, ok := user[idArr[1]]; ok {
+			delete(user, idArr[1])
+			cons.acpDelChan <- true
+		} else {
+			//connection not found
+			log.Fatal("connection not found")
+			return
+		}
+	} else {
+		log.Fatal("user not found!")
+	}
 
 }
 func (um *Manager) AddCon(con *AcpCon) {
@@ -65,12 +80,10 @@ func (um *Manager) handleAdd(acpCon *AcpCon) {
 		return
 	}
 	acpCon.owner = user
-	if val, ok := um.AcpConnections[user.Username]; !ok {
-		um.AcpConnections[user.Username] = make([]*AcpCon, 0)
-		um.AcpConnections[user.Username] = append(val, acpCon)
-	} else {
-		um.AcpConnections[user.Username] = append(val, acpCon)
+	if _, ok := um.AcpConnections[user.Username]; !ok {
+		um.AcpConnections[user.Username] = make(map[string]*AcpCon, 0)
 	}
+	um.AcpConnections[user.Username][acpCon.id] = acpCon
 	acpCon.AuthChan <- true
 }
 func (um *Manager) findUserByName(uname string) (*User, error) {
@@ -103,6 +116,6 @@ func init() {
 	UM.AddConChannel = make(chan *AcpCon)
 	UM.printChannel = make(chan bool)
 	UM.CmdChannel = make(chan string)
-	UM.AcpConnections = make(map[string][]*AcpCon)
+	UM.AcpConnections = make(map[string]map[string]*AcpCon)
 	//pp.Println(UM)
 }
