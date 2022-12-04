@@ -1,17 +1,12 @@
 package main
 
 import (
-	"context"
 	"fmt"
-	"github.com/k0kubun/pp/v3"
 	"github.com/rayguo17/go-socks/Backdoor"
 	"github.com/rayguo17/go-socks/socks"
 	"github.com/rayguo17/go-socks/user"
-	"io"
 	"log"
 	"net"
-	"strconv"
-	"strings"
 )
 
 func main() {
@@ -45,8 +40,7 @@ func acceptHandler(conn net.Conn) {
 		return
 	}
 	fmt.Printf("%d bytes received!\n", initLen)
-	count := 0
-
+	
 	source, err := socks.FromByte(buf[:initLen], socks.HandShakeRequest)
 
 	if err != nil {
@@ -114,6 +108,11 @@ func acceptHandler(conn net.Conn) {
 			conn.Write([]byte{1, 1})
 			return
 		}
+		_, err = conn.Write([]byte{1, 0})
+		if err != nil {
+			log.Println(err)
+			return
+		}
 	} else {
 		//create anonymous account route
 		acpCon, err = socks.Anonymous(conn)
@@ -124,11 +123,7 @@ func acceptHandler(conn net.Conn) {
 		}
 	}
 	defer acpCon.ManualClose() //close on return
-	_, err = conn.Write([]byte{1, 0})
-	if err != nil {
-		log.Println(err)
-		return
-	}
+
 	//TODO://4. request phase
 	cmdBuf := make([]byte, 512)
 	cmdLen, err := conn.Read(cmdBuf)
@@ -143,75 +138,45 @@ func acceptHandler(conn net.Conn) {
 		return
 	}
 	if _, ok := source.(*socks.ClientCmd); !ok {
-		log.Fatal("socks authReq mapping failed returning")
+		log.Println("socks authReq mapping failed returning")
 		return
 	}
 	clientCmd := source.(*socks.ClientCmd)
 	//pp.Println(clientCmd)
 	//commandHandle -> handleConnect -> con.ConnectCmd
+	//fmt.Println("going to handle command")
 	err = socks.CommandHandle(clientCmd, acpCon)
+
 	if err != nil {
 		log.Println(err)
-		switch strings(err.Error()) {
-		case ""
-		}
+		_, err = conn.Write([]byte{5, 1, 0, 1, 1, 2, 3, 4, 1, 2})
 		//construct fail message as well
 		//depends on err reply message (rule set)
-
+		return
+	}
+	//fmt.Println("Command handle success")
+	cmdResp, err := socks.ConstructResp(acpCon, socks.ServerResponse)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	_, err = conn.Write(cmdResp)
+	if err != nil {
+		log.Println(err)
 		return
 	}
 	//return base on
 	//should response based on cmd type??
-
-	return
-	address := strings.Builder{}
-
-	//only supporting bind command for now.
-	for i := 0; i < cmdLen; i++ {
-		//fmt.Printf("%v ", cmdBuf[i])
-		if i == 4 {
-			count = int(cmdBuf[i])
-			address.Write(cmdBuf[i+1 : i+1+count])
-
-		}
-
-	}
-	portByte := cmdBuf[cmdLen-2 : cmdLen]
-	pp.Println(portByte)
-	portNum := int(portByte[0])*16*16 + int(portByte[1])
-	fmt.Println("portNum", portNum)
-	fmt.Println("")
-	fmt.Println(address.String())
-	fmt.Println("")
-	//ver,cmd,rsv,ATYP,DST.ADDR                                            ,DST.PORT
-	//  5,  1,  0,   3,      12,119,119,119,46,98,105,110,103,46,99,111,109, 1,187
-	dialConn, err := net.Dial("tcp", address.String()+":"+strconv.Itoa(portNum))
+	//Final: start Executor Go Routine, Start Data Transfer
+	err = acpCon.ExecuteBegin()
+	log.Println("Executing")
 	if err != nil {
-		//send failure message back to client.
-		fmt.Println("Error dialing", err.Error())
+		log.Println(err)
 		return
 	}
-	defer dialConn.Close()
-
-	//send command and then start streaming??
-	//return value:
-	//ver, rep, RSV, ATYP, BND.ADDR, BND.PORT
-	// 05,  00,  00,   01, 1, 0,0,0
-	conn.Write([]byte{5, 0, 0, 1, 0, 0, 0, 0, 0, 0})
-	//use a go routine to send
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go func() {
-		_, _ = io.Copy(conn, dialConn)
-		//calculate
-		cancel()
-	}()
-	go func() {
-		_, _ = io.Copy(dialConn, conn)
-		cancel()
-	}()
-	<-ctx.Done()
+	select {}
 	return
+
 }
 
 //browser tends to send multiple tcp connections, so there will be parallel thread using same instance.

@@ -24,6 +24,8 @@ type Manager struct {
 	printChannel   chan bool
 	AddConChannel  chan *AcpCon //after assertion need to notify, once notify done, can be continued.
 	DelConChannel  chan string  // use string to delete
+	AddUserChannel chan *User
+	DelUserChannel chan string //use username to delete
 }
 
 var UM Manager

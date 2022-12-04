@@ -10,8 +10,8 @@ type DomainAddr struct {
 	port [2]byte
 }
 
-func NewDomainAddr(ip []byte, port [2]byte) *Ipv4Addr {
-	return &Ipv4Addr{
+func NewDomainAddr(ip []byte, port [2]byte) *DomainAddr {
+	return &DomainAddr{
 		addr: ip,
 		port: port,
 	}

@@ -3,7 +3,6 @@ package socks
 import (
 	"errors"
 	"fmt"
-	"github.com/k0kubun/pp/v3"
 	"github.com/rayguo17/go-socks/user"
 	"github.com/rayguo17/go-socks/util"
 	"net"
@@ -120,13 +119,13 @@ func FromStruct(target interface{}, msgType int) ([]byte, error) {
 func CommandHandle(cmd *ClientCmd, con *user.AcpCon) error {
 	switch cmd.Cmd {
 	case BIND:
-		fmt.Println("BIND command")
+		//fmt.Println("BIND command")
 
 	case CONNECT:
-		fmt.Println("CONNECT command")
+		//fmt.Println("CONNECT command")
 		return handleConnect(cmd, con)
 	case UDPASSO:
-		fmt.Println("UDP ASSOCIATE command")
+		//fmt.Println("UDP ASSOCIATE command")
 	}
 	return nil
 }
@@ -136,17 +135,18 @@ func handleConnect(cmd *ClientCmd, con *user.AcpCon) error {
 	case Ipv4Address:
 		addr = util.NewIpv4Addr(cmd.DstAddr, cmd.DstPort)
 	case DomainAddress:
+		//fmt.Println("domain address")
 		addr = util.NewDomainAddr(cmd.DstAddr, cmd.DstPort)
 	}
-
-	return con.ConnectCmd(addr.String())
+	fmt.Println(addr.String())
+	return con.ConnectCmd(addr)
 
 }
 func Authenticate(authReq *AuthReq, conn net.Conn) (*user.AcpCon, error) {
 	id := conn.RemoteAddr().String()
 	username := string(authReq.Uname)
 	passwd := string(authReq.Passwd)
-	acpCon := user.NewCon(id, conn, username, passwd, user.AuthDone)
+	acpCon := user.NewCon(id, conn, username, passwd)
 	user.UM.AddCon(&acpCon)
 	authStatus := <-acpCon.AuthChan
 	if !authStatus {
@@ -156,11 +156,25 @@ func Authenticate(authReq *AuthReq, conn net.Conn) (*user.AcpCon, error) {
 
 	return &acpCon, nil
 }
+func ConstructResp(con *user.AcpCon, msgType int) ([]byte, error) {
+	switch msgType {
+	case HandShakeResponse:
+		fmt.Println("building handshake response")
+	case AuthResponse:
+		fmt.Println("building Auth Response")
+	case ServerResponse:
+		return con.CmdResponse()
+	default:
+		return nil, errors.New(fmt.Sprintf("unrecognized msgType: %d\n", msgType))
+	}
+	return nil, nil
+
+}
 func Anonymous(conn net.Conn) (*user.AcpCon, error) {
 	id := conn.RemoteAddr().String()
 	username := "anonymous"
 	passwd := ""
-	acpCon := user.NewCon(id, conn, username, passwd, user.AuthDone)
+	acpCon := user.NewCon(id, conn, username, passwd)
 	user.UM.AddCon(&acpCon)
 	authStatus := <-acpCon.AuthChan
 	if !authStatus {
@@ -170,7 +184,7 @@ func Anonymous(conn net.Conn) (*user.AcpCon, error) {
 }
 
 func buildCC(buf []byte) (*ClientCmd, error) {
-	pp.Println(buf)
+	//pp.Println(buf)
 	res := &ClientCmd{}
 	if buf[0] != 5 {
 		return nil, errors.New(fmt.Sprintf("socks version: %d not supported\n", buf[0]))

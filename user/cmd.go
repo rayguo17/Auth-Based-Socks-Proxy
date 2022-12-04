@@ -1,6 +1,7 @@
 package user
 
 type Cmd interface {
-	Start() //start executor
-	Close() //close executor
+	Start() error //start executor
+	Close()       //close executor
+	FormByte() []byte
 }
