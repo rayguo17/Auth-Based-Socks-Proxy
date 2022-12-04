@@ -147,8 +147,22 @@ func acceptHandler(conn net.Conn) {
 		return
 	}
 	clientCmd := source.(*socks.ClientCmd)
-	pp.Println(clientCmd)
-	socks.CommandHandle(clientCmd, acpCon)
+	//pp.Println(clientCmd)
+	//commandHandle -> handleConnect -> con.ConnectCmd
+	err = socks.CommandHandle(clientCmd, acpCon)
+	if err != nil {
+		log.Println(err)
+		switch strings(err.Error()) {
+		case ""
+		}
+		//construct fail message as well
+		//depends on err reply message (rule set)
+
+		return
+	}
+	//return base on
+	//should response based on cmd type??
+
 	return
 	address := strings.Builder{}
 

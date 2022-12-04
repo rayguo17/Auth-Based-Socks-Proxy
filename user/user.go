@@ -42,15 +42,20 @@ func (um *Manager) MainRoutine() {
 			pp.Println(um.AcpConnections)
 		case acpCon := <-um.AddConChannel:
 			um.handleAdd(acpCon)
+		case id := <-um.DelConChannel:
+			um.handleDel(id)
 		}
 	}
 
 }
 func (um *Manager) DelCon(id string) {
+	//fmt.Println("Del con received")
 	um.DelConChannel <- id
 }
 func (um *Manager) handleDel(id string) {
 	//username|ip:port
+	//fmt.Println("delete handling")
+	//fmt.Println(id)
 	idArr := strings.Split(id, "|")
 	if user, ok := um.AcpConnections[idArr[0]]; ok {
 		if cons, ok := user[idArr[1]]; ok {

@@ -46,7 +46,9 @@ type AcpCon struct {
 
 //could be manually killed or by closing the socket.
 func (acpCon *AcpCon) ManualClose() {
-	acpCon.manualCloseChan <- true
+	//fmt.Println("manual close executed")
+	acpCon.handleClose()
+	//acpCon.manualCloseChan <- true
 }
 func (acpCon *AcpCon) ExecuteCmd() {
 
@@ -90,8 +92,11 @@ func (acpCon *AcpCon) ReadRoutine() {
 func (acpCon *AcpCon) handleClose() {
 	//TODO:
 	//end sub routine (if exist), delete from user manager.
+	//fmt.Println("handling close")
+	acpCon.conn.Close()
 	if acpCon.cmdExecutor != nil {
-		acpCon.cmdExecutor.Close()
+		go acpCon.cmdExecutor.Close()
+		//fmt.Println("acpCon Executing")
 		//
 		select {
 		case <-acpCon.cmdClosedChan:
@@ -100,8 +105,9 @@ func (acpCon *AcpCon) handleClose() {
 			log.Println("subExec delete timeout, quiting anyway...")
 		}
 	}
+	//fmt.Println("deleting from um")
 	//delete from  um
-	UM.DelCon(acpCon.username + "|" + acpCon.id)
+	go UM.DelCon(acpCon.username + "|" + acpCon.id)
 	//should add a timeout don't wait forever
 	select {
 	case <-acpCon.acpDelChan:
@@ -110,6 +116,20 @@ func (acpCon *AcpCon) handleClose() {
 		log.Println("delete time out quiting anyway")
 	}
 	return
+}
+func (acpCon *AcpCon) ConnectCmd(addr string) error {
+	//try to dial create sub routine then return.
+	//fmt.Println(addr)
+	//TODO: should check the ruleset of the addr first, maybe it is not allowed
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		return err
+	}
+	//success, create executor
+	acpCon.cmdClosedChan = make(chan bool)
+	connectExe := NewConExe(acpCon.cmdClosedChan, conn)
+	acpCon.cmdExecutor = connectExe
+	return nil
 }
 func NewCon(id string, conn net.Conn, username string, passwd string, status int) AcpCon {
 	return AcpCon{

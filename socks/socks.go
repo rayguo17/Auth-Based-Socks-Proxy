@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/k0kubun/pp/v3"
 	"github.com/rayguo17/go-socks/user"
+	"github.com/rayguo17/go-socks/util"
 	"net"
 )
 
@@ -120,12 +121,26 @@ func CommandHandle(cmd *ClientCmd, con *user.AcpCon) error {
 	switch cmd.Cmd {
 	case BIND:
 		fmt.Println("BIND command")
+
 	case CONNECT:
 		fmt.Println("CONNECT command")
+		return handleConnect(cmd, con)
 	case UDPASSO:
 		fmt.Println("UDP ASSOCIATE command")
 	}
 	return nil
+}
+func handleConnect(cmd *ClientCmd, con *user.AcpCon) error {
+	var addr util.Address
+	switch int(cmd.Atyp) {
+	case Ipv4Address:
+		addr = util.NewIpv4Addr(cmd.DstAddr, cmd.DstPort)
+	case DomainAddress:
+		addr = util.NewDomainAddr(cmd.DstAddr, cmd.DstPort)
+	}
+
+	return con.ConnectCmd(addr.String())
+
 }
 func Authenticate(authReq *AuthReq, conn net.Conn) (*user.AcpCon, error) {
 	id := conn.RemoteAddr().String()
