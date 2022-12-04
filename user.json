@@ -1,14 +1,33 @@
 [
   {
     "username": "anonymous",
-    "password": ""
+    "password": "",
+    "access": {
+      "black": true,
+      "black_list": [
+        "www.baidu.com"
+      ],
+      "white_list": []
+    }
   },
   {
     "username": "rayguo",
-    "password": "123123"
+    "password": "123123",
+    "access": {
+      "black": true,
+      "black_list": [
+        "www.baidu.com"
+      ],
+      "white_list": []
+    }
   },
   {
     "username": "latina",
-    "password": "tilda123"
+    "password": "tilda123",
+    "access": {
+      "black": true,
+      "black_list": [],
+      "white_list": []
+    }
   }
 ]

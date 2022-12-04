@@ -16,6 +16,11 @@ func NewDomainAddr(ip []byte, port [2]byte) *DomainAddr {
 		port: port,
 	}
 }
+func (da *DomainAddr) Addr() string {
+	sb := strings.Builder{}
+	sb.Write(da.addr)
+	return sb.String()
+}
 func (da *DomainAddr) String() string {
 	sb := strings.Builder{}
 	sb.Write(da.addr)

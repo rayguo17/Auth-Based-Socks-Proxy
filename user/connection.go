@@ -145,8 +145,25 @@ func (acpCon *AcpCon) ConnectCmd(addr util.Address) error {
 	//try to dial create sub routine then return.
 	//fmt.Println(addr)
 	//TODO: should check the ruleset of the addr first, maybe it is not allowed
-	addrStr := addr.String()
-	conn, err := net.DialTimeout("tcp", addrStr, time.Second*5)
+	addStr := addr.Addr()
+	informChan := make(chan *Response)
+	req := &CheckRulesetWrap{
+		Username:   acpCon.username,
+		DstAddr:    addStr,
+		informChan: informChan,
+	}
+	go UM.CheckRuleset(req)
+	select {
+	case resp := <-informChan:
+		if resp.errCode != 0 {
+			return errors.New(resp.errMsg)
+		}
+	case <-time.After(time.Second * 5):
+		return errors.New("check ruleset timeout")
+	}
+
+	str := addr.String()
+	conn, err := net.DialTimeout("tcp", str, time.Second*5)
 	if err != nil {
 		return err
 	}

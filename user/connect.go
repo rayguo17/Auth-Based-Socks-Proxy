@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"time"
 )
 
 const (
@@ -75,6 +76,13 @@ func (ce *ConnectExecutor) uploadRoutine(cancelFunc context.CancelFunc) {
 		log.Print("upload routine err ")
 		log.Println(err)
 	}
+	inform := ce.uploadTraffic(written, true)
+	select {
+	case res := <-inform:
+		log.Println(res.String())
+	case <-time.After(time.Second * 5):
+		log.Println("upload traffic timeout quiting anyway")
+	}
 	fmt.Printf("%d bytes written\n", written)
 	cancelFunc()
 }
@@ -84,8 +92,27 @@ func (ce *ConnectExecutor) downloadRoutine(cancelFunc context.CancelFunc) {
 		log.Print("download routine err ")
 		log.Println(err)
 	}
+	inform := ce.uploadTraffic(written, false)
+	select {
+	case res := <-inform:
+		log.Println(res.String())
+	case <-time.After(time.Second * 5):
+		log.Println("upload traffic timeout quiting anyway")
+	}
 	fmt.Printf("%d bytes written\n", written)
 	cancelFunc()
+}
+func (ce *ConnectExecutor) uploadTraffic(traffic int64, upload bool) chan *Response {
+	res := make(chan *Response)
+
+	wrap := &UploadTrafficWrap{
+		Username:   ce.acpCon.username,
+		up:         upload,
+		count:      traffic,
+		informChan: res,
+	}
+	go UM.UploadTraffic(wrap)
+	return res
 }
 func (ce *ConnectExecutor) MainRoutine(ctx context.Context) {
 	for {
