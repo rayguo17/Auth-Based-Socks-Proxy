@@ -87,37 +87,37 @@ func (ce *ConnectExecutor) Close() {
 func (ce *ConnectExecutor) uploadRoutine(cancelFunc context.CancelFunc) {
 	written, err := io.Copy(ce.acpCon.conn, ce.targetCon)
 	if err != nil {
-		log.Print("upload routine err ")
-		log.Println(err)
+		//log.Print("upload routine err ")
+		//log.Println(err)
 	}
 	inform := ce.uploadTraffic(written, true)
 	select {
-	case res := <-inform:
-		log.Println(res.String())
+	case _ = <-inform:
+		//log.Println(res.String())
 	case <-time.After(time.Second * 5):
 		log.Println("upload traffic timeout quiting anyway")
 	}
-	fmt.Printf("%d bytes written\n", written)
+	//fmt.Printf("%d bytes written\n", written)
 	cancelFunc()
 }
 func (ce *ConnectExecutor) downloadRoutine(cancelFunc context.CancelFunc) {
 	written, err := io.Copy(ce.targetCon, ce.acpCon.conn)
 	if err != nil {
-		log.Print("download routine err ")
-		log.Println(err)
+		//log.Print("download routine err ")
+		//log.Println(err)
 	}
 	inform := ce.uploadTraffic(written, false)
 	select {
-	case res := <-inform:
-		log.Println(res.String())
+	case _ = <-inform:
+		//log.Println(res.String())
 	case <-time.After(time.Second * 5):
 		log.Println("upload traffic timeout quiting anyway")
 	}
-	fmt.Printf("%d bytes written\n", written)
+	//fmt.Printf("%d bytes written\n", written)
 	cancelFunc()
 }
-func (ce *ConnectExecutor) uploadTraffic(traffic int64, upload bool) chan *Response {
-	res := make(chan *Response)
+func (ce *ConnectExecutor) uploadTraffic(traffic int64, upload bool) chan *util.Response {
+	res := make(chan *util.Response)
 
 	wrap := &UploadTrafficWrap{
 		Username:   ce.acpCon.username,
@@ -135,7 +135,7 @@ func (ce *ConnectExecutor) MainRoutine(ctx context.Context) {
 			ce.status = END
 			ce.Close()
 			ce.acpCon.EndCommand() //might lead to multiple free???
-			log.Println("executor main routine done")
+			//log.Println("executor main routine done")
 			return
 		case <-ce.toCloseChan:
 			return

@@ -18,12 +18,14 @@ type Connection struct {
 type ConnPrinter struct {
 	conns []*Connection
 	size  int
+	total int
 }
 
-func NewConnPrinter(count int) *ConnPrinter {
+func NewConnPrinter(count int, totalCount int) *ConnPrinter {
 	return &ConnPrinter{
 		conns: make([]*Connection, 0, count),
 		size:  count,
+		total: totalCount,
 	}
 }
 
@@ -32,15 +34,17 @@ func (cp *ConnPrinter) AddCon(connection *Connection) {
 }
 func (cp *ConnPrinter) PrintStatus() {
 
-	log.Printf("%d connections accepted\n", cp.size)
+	log.Printf("%d connections accepted. %d active connections.\n", cp.total, cp.size)
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
 	t.AppendHeader(table.Row{"#", "id", "username", "dstAddr", "status", "executeStatus", "cmdType"})
 	for i, v := range cp.conns {
 		t.AppendRow([]interface{}{
+
 			i, v.id, v.username, v.DstAddr, v.status, v.executeStatus, v.cmdType,
 		})
 	}
+
 	t.Render()
 }
 

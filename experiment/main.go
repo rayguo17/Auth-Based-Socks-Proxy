@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 func main() {
 	//conn, err := net.Dial("tcp", "www.baidu.com:80")
@@ -30,7 +33,7 @@ func main() {
 	//
 	//}
 	//log.Println(httpBody, httpSize)
-	id := "lsdf"
-	lo := "lsdf"
-	fmt.Println(id == lo)
+
+	t := time.Time{}
+	fmt.Println(t.String())
 }

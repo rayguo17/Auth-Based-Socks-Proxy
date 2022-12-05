@@ -138,7 +138,7 @@ func handleConnect(cmd *ClientCmd, con *user.AcpCon) error {
 		//fmt.Println("domain address")
 		addr = util.NewDomainAddr(cmd.DstAddr, cmd.DstPort)
 	}
-	fmt.Println(addr.String())
+	//fmt.Println(addr.String())
 	return con.ConnectCmd(addr)
 
 }

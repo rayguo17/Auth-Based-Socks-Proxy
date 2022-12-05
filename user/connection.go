@@ -6,7 +6,6 @@ package user
 
 import (
 	"errors"
-	"fmt"
 	"github.com/rayguo17/go-socks/util"
 	"log"
 	"net"
@@ -79,13 +78,16 @@ func NewCon(id string, conn net.Conn, username string, passwd string) AcpCon {
 
 func (acpCon *AcpCon) EndCommand() {
 	if acpCon.status == Dead {
-		fmt.Println("already dead")
+		//fmt.Println("already dead")
 		return
 	}
-	fmt.Println("Still alive ending")
+	//fmt.Println("Still alive ending")
 	acpCon.endChan <- true
 }
 func (acp *AcpCon) ProtocolClose() {
+	if acp.status == Working || acp.status == End || acp.status == Dead {
+		return
+	}
 	acp.handleClose()
 }
 
@@ -100,7 +102,7 @@ func (acpCon *AcpCon) ManualClose() {
 
 //detail routine should be maintain by sub type
 func (acpCon *AcpCon) MainRoutine() {
-	fmt.Println("Acp MainRoutine running")
+	//fmt.Println("Acp MainRoutine running")
 	count := 0
 	for {
 		count++
@@ -110,7 +112,7 @@ func (acpCon *AcpCon) MainRoutine() {
 			acpCon.handleClose()
 			return
 		case <-acpCon.endChan:
-			fmt.Println("ending acpCon")
+			//fmt.Println("ending acpCon")
 			acpCon.handleEnd()
 			return
 		}
@@ -124,7 +126,7 @@ func (acpCon *AcpCon) handleEnd() {
 	//should add a timeout don't wait forever
 	select {
 	case <-acpCon.acpDelChan:
-		log.Println("acp con delete success")
+		//log.Println("acp con delete success")
 	case <-time.After(5 * time.Second):
 		log.Println("delete time out quiting anyway")
 	}
@@ -154,7 +156,7 @@ func (acpCon *AcpCon) handleClose() {
 	//should add a timeout don't wait forever
 	select {
 	case <-acpCon.acpDelChan:
-		log.Println("acp con delete success")
+		//log.Println("acp con delete success")
 	case <-time.After(5 * time.Second):
 		log.Println("delete time out quiting anyway")
 	}
@@ -164,9 +166,10 @@ func (acpCon *AcpCon) ConnectCmd(addr util.Address) error {
 	//try to dial create sub routine then return.
 	//fmt.Println(addr)
 	//TODO: should check the ruleset of the addr first, maybe it is not allowed
+	acpCon.cmdType = Connect
 	acpCon.status = CmdRecv
 	addStr := addr.Addr()
-	informChan := make(chan *Response)
+	informChan := make(chan *util.Response)
 	req := &CheckRulesetWrap{
 		Username:   acpCon.username,
 		DstAddr:    addStr,
@@ -175,8 +178,8 @@ func (acpCon *AcpCon) ConnectCmd(addr util.Address) error {
 	go UM.CheckRuleset(req)
 	select {
 	case resp := <-informChan:
-		if resp.errCode != 0 {
-			return errors.New(resp.errMsg)
+		if resp.GetErrCode() != 0 {
+			return errors.New(resp.GetErrMsg())
 		}
 	case <-time.After(time.Second * 5):
 		return errors.New("check ruleset timeout")
@@ -191,14 +194,18 @@ func (acpCon *AcpCon) ConnectCmd(addr util.Address) error {
 	acpCon.cmdClosedChan = make(chan bool)
 	connectExe := NewConExe(acpCon.cmdClosedChan, conn, addr, acpCon)
 	acpCon.cmdExecutor = connectExe
-	fmt.Println("command execute")
+	//fmt.Println("command execute")
 	return nil
 }
 func (acpCon *AcpCon) ExecuteBegin() error {
 	//should check everything before begin
 	go acpCon.MainRoutine()
+	err := acpCon.cmdExecutor.Start()
+	if err != nil {
+		return err
+	}
 	acpCon.status = Working
-	return acpCon.cmdExecutor.Start()
+	return err
 }
 func (acpCon *AcpCon) CmdResponse() ([]byte, error) {
 	if acpCon.cmdExecutor == nil {

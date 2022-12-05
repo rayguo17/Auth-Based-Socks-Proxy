@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/rayguo17/go-socks/Backdoor"
+	"github.com/rayguo17/go-socks/api"
 	"github.com/rayguo17/go-socks/socks"
 	"github.com/rayguo17/go-socks/user"
 	"log"
@@ -19,7 +20,11 @@ func main() {
 	}
 	// do some initialization
 	//main routine do something.
-	go user.UM.MainRoutine()
+	umStartChan := make(chan bool)
+	go user.UM.MainRoutine(umStartChan)
+	<-umStartChan
+	log.Println("UM initialize success")
+	go api.MainRoutine()
 	go Backdoor.BackDoorRoutine()
 	for {
 		conn, err := listener.Accept()
@@ -39,10 +44,8 @@ func acceptHandler(conn net.Conn) {
 		log.Println(err)
 		return
 	}
-	fmt.Printf("%d bytes received!\n", initLen)
-
+	//fmt.Printf("%d bytes received!\n", initLen)
 	source, err := socks.FromByte(buf[:initLen], socks.HandShakeRequest)
-
 	if err != nil {
 		log.Println(err)
 		return
@@ -129,7 +132,6 @@ func acceptHandler(conn net.Conn) {
 	cmdLen, err := conn.Read(cmdBuf)
 	if err != nil {
 		log.Println(err)
-
 		return
 	}
 	source, err = socks.FromByte(cmdBuf[:cmdLen], socks.ClientCommand)
@@ -169,11 +171,12 @@ func acceptHandler(conn net.Conn) {
 	//should response based on cmd type??
 	//Final: start Executor Go Routine, Start Data Transfer
 	err = acpCon.ExecuteBegin()
-	log.Println("Executing")
+	//log.Println("Executing")
 	if err != nil {
 		log.Println(err)
 		return
 	}
+	//
 	select {}
 	return
 
