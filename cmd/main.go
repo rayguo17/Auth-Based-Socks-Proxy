@@ -40,7 +40,7 @@ func acceptHandler(conn net.Conn) {
 		return
 	}
 	fmt.Printf("%d bytes received!\n", initLen)
-	
+
 	source, err := socks.FromByte(buf[:initLen], socks.HandShakeRequest)
 
 	if err != nil {
@@ -122,7 +122,7 @@ func acceptHandler(conn net.Conn) {
 			return
 		}
 	}
-	defer acpCon.ManualClose() //close on return
+	defer acpCon.ProtocolClose() //close on return
 
 	//TODO://4. request phase
 	cmdBuf := make([]byte, 512)

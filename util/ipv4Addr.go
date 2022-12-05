@@ -36,8 +36,16 @@ func (ia *Ipv4Addr) String() string {
 	}
 	sb.WriteRune(':')
 	var portNum int
-	for i := 0; i < len(ia.port); i++ {
-		portNum += int(ia.port[i])
+	position := 0
+	for i := len(ia.port) - 1; i >= 0; i-- {
+		num := int(ia.port[i])
+
+		for j := 0; j < position; j++ {
+			num = num * 16 * 16
+		}
+		position++
+		portNum += num
+
 	}
 	sb.WriteString(strconv.Itoa(portNum))
 	return sb.String()

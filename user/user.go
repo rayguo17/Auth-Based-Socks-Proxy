@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/k0kubun/pp/v3"
+	"github.com/rayguo17/go-socks/util"
 	"log"
 	"os"
 	"strings"
@@ -27,6 +28,7 @@ type Access struct {
 //encode cmd into string. parse
 type Manager struct {
 	Users                []*User
+	ConnectionCount      int
 	AddUserChannel       chan *UserWrap
 	DelUserChannel       chan *NameWrap
 	CmdChannel           chan string                   //for read write
@@ -39,6 +41,7 @@ type Manager struct {
 	RulesetModChannel    chan *RulesetModWrap
 	UploadTrafficChannel chan *UploadTrafficWrap
 	CheckRulesetChannel  chan *CheckRulesetWrap
+	PrintConnChannel     chan bool
 }
 
 var UM Manager
@@ -72,10 +75,24 @@ func (um *Manager) MainRoutine() {
 			um.handleTrafficUpload(wrap)
 		case wrap := <-um.CheckRulesetChannel:
 			um.handleCheckRuleset(wrap)
+		case <-um.PrintConnChannel:
+			um.handlePrintConn()
 		}
 	}
 
 }
+func (um *Manager) handlePrintConn() {
+	cp := util.NewConnPrinter(um.ConnectionCount)
+	for username, acpMap := range um.AcpConnections {
+		for id, acp := range acpMap {
+
+			conn := util.NewConnection(id, username, acp.RemoteAddress(), EXECSTATUS[acp.ExecutorStatus()], ACPSTATUSMAP[acp.status], CMDMap[acp.cmdType])
+			cp.AddCon(conn)
+		}
+	}
+	cp.PrintStatus()
+}
+
 func (um *Manager) handleCheckRuleset(wrap *CheckRulesetWrap) {
 
 	user, err := um.findUserByName(wrap.Username)
@@ -162,6 +179,7 @@ func (um *Manager) handleDelCon(id string) {
 	if user, ok := um.AcpConnections[idArr[0]]; ok {
 		if cons, ok := user[idArr[1]]; ok {
 			delete(user, idArr[1])
+			um.ConnectionCount -= 1
 			cons.acpDelChan <- true
 		} else {
 			//connection not found
@@ -172,6 +190,9 @@ func (um *Manager) handleDelCon(id string) {
 		log.Fatal("user not found!")
 	}
 
+}
+func (um *Manager) PrintConn() {
+	um.PrintConnChannel <- true
 }
 func (um *Manager) AddCon(con *AcpCon) {
 	um.AddConChannel <- con
@@ -191,7 +212,9 @@ func (um *Manager) handleAddCon(acpCon *AcpCon) {
 		um.AcpConnections[user.Username] = make(map[string]*AcpCon, 0)
 	}
 	um.AcpConnections[user.Username][acpCon.id] = acpCon
+	um.ConnectionCount += 1
 	acpCon.AuthChan <- true
+
 }
 func (um *Manager) findUserByName(uname string) (*User, error) {
 	for i := 0; i < len(um.Users); i++ {
@@ -228,6 +251,7 @@ func init() {
 	UM.RulesetModChannel = make(chan *RulesetModWrap)
 	UM.UploadTrafficChannel = make(chan *UploadTrafficWrap)
 	UM.CheckRulesetChannel = make(chan *CheckRulesetWrap)
+	UM.PrintConnChannel = make(chan bool)
 
 	UM.AddConChannel = make(chan *AcpCon)
 	UM.DelConChannel = make(chan string)

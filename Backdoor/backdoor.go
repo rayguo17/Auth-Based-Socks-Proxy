@@ -19,6 +19,8 @@ func BackDoorRoutine() {
 			fmt.Println("print")
 		case "2\n":
 			pp.Println(user.UM.AcpConnections)
+		case "3\n":
+			user.UM.PrintConn()
 		default:
 			return
 		}

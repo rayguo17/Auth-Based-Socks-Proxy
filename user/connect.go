@@ -16,6 +16,13 @@ const (
 	END     int = 3
 )
 
+var EXECSTATUS = map[int]string{
+	0: "NULL",
+	1: "RUNNING",
+	2: "DEAD",
+	3: "END",
+}
+
 type ConnectExecutor struct {
 	targetCon net.Conn
 	readChan  chan []byte
@@ -26,6 +33,13 @@ type ConnectExecutor struct {
 	toCloseChan      chan bool
 	status           int
 	addr             util.Address
+}
+
+func (ce *ConnectExecutor) Status() int {
+	return ce.status //should put it inside routine
+}
+func (ce *ConnectExecutor) RemoteAddress() string {
+	return ce.addr.String()
 }
 
 func NewConExe(closeChan chan bool, conn net.Conn, addr util.Address, con *AcpCon) *ConnectExecutor {

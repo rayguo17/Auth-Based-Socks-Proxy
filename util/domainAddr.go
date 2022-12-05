@@ -25,9 +25,18 @@ func (da *DomainAddr) String() string {
 	sb := strings.Builder{}
 	sb.Write(da.addr)
 	sb.WriteRune(':')
+	//pp.Println(da.port)
 	portNum := 0
-	for i := 0; i < len(da.port); i++ {
-		portNum += int(da.port[i])
+	position := 0
+	for i := len(da.port) - 1; i >= 0; i-- {
+		num := int(da.port[i])
+
+		for j := 0; j < position; j++ {
+			num = num * 16 * 16
+		}
+		position++
+		portNum += num
+
 	}
 	sb.WriteString(strconv.Itoa(portNum))
 	return sb.String()

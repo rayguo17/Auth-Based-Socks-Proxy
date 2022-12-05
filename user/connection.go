@@ -17,8 +17,17 @@ const (
 	AuthDone int = 1
 	CmdRecv      = 2
 	Working      = 3
-	Dead         = 4
+	End          = 4
+	Dead         = 5
 )
+
+var ACPSTATUSMAP = map[int]string{
+	1: "AuthDone",
+	2: "CmdRecv",
+	3: "Working",
+	4: "End",
+	5: "Dead",
+}
 
 //COMMAND TYPE
 const (
@@ -26,6 +35,13 @@ const (
 	Bind        = 2
 	UdpAsso     = 3
 )
+
+var CMDMap = map[int]string{
+	1: "Connect",
+	2: "Bind",
+	3: "UdpAsso",
+}
+
 const BUFMAX = 4096
 
 type AcpCon struct {
@@ -69,6 +85,9 @@ func (acpCon *AcpCon) EndCommand() {
 	fmt.Println("Still alive ending")
 	acpCon.endChan <- true
 }
+func (acp *AcpCon) ProtocolClose() {
+	acp.handleClose()
+}
 
 //could be manually killed or by closing the socket.
 func (acpCon *AcpCon) ManualClose() {
@@ -99,7 +118,7 @@ func (acpCon *AcpCon) MainRoutine() {
 	//fmt.Println("Main routine dead")
 }
 func (acpCon *AcpCon) handleEnd() {
-	acpCon.status = Dead
+	acpCon.status = End
 	//fmt.Println("handling end in acpCon")
 	go UM.DelCon(acpCon.username + "|" + acpCon.id)
 	//should add a timeout don't wait forever
@@ -145,6 +164,7 @@ func (acpCon *AcpCon) ConnectCmd(addr util.Address) error {
 	//try to dial create sub routine then return.
 	//fmt.Println(addr)
 	//TODO: should check the ruleset of the addr first, maybe it is not allowed
+	acpCon.status = CmdRecv
 	addStr := addr.Addr()
 	informChan := make(chan *Response)
 	req := &CheckRulesetWrap{
@@ -163,7 +183,7 @@ func (acpCon *AcpCon) ConnectCmd(addr util.Address) error {
 	}
 
 	str := addr.String()
-	conn, err := net.DialTimeout("tcp", str, time.Second*5)
+	conn, err := net.DialTimeout("tcp", str, time.Second*10)
 	if err != nil {
 		return err
 	}
@@ -177,7 +197,7 @@ func (acpCon *AcpCon) ConnectCmd(addr util.Address) error {
 func (acpCon *AcpCon) ExecuteBegin() error {
 	//should check everything before begin
 	go acpCon.MainRoutine()
-
+	acpCon.status = Working
 	return acpCon.cmdExecutor.Start()
 }
 func (acpCon *AcpCon) CmdResponse() ([]byte, error) {
@@ -185,4 +205,18 @@ func (acpCon *AcpCon) CmdResponse() ([]byte, error) {
 		return nil, errors.New("command Executor has not been initialize")
 	}
 	return acpCon.cmdExecutor.FormByte(), nil
+}
+func (acp *AcpCon) RemoteAddress() string {
+	if acp.cmdExecutor == nil {
+		return ""
+	} else {
+		return acp.cmdExecutor.RemoteAddress()
+	}
+}
+func (acp *AcpCon) ExecutorStatus() int {
+	if acp.cmdExecutor == nil {
+		return 0
+	} else {
+		return acp.cmdExecutor.Status()
+	}
 }
