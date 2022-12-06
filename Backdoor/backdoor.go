@@ -3,7 +3,6 @@ package Backdoor
 import (
 	"bufio"
 	"fmt"
-	"github.com/k0kubun/pp/v3"
 	"github.com/rayguo17/go-socks/user"
 	"os"
 )
@@ -15,12 +14,10 @@ func BackDoorRoutine() {
 		fmt.Println(str)
 		switch str {
 		case "1\n":
-			user.UM.ListUser()
-			fmt.Println("print")
+			user.UM.ListUsers()
 		case "2\n":
-			pp.Println(user.UM.AcpConnections)
-		case "3\n":
-			user.UM.PrintConn()
+			user.UM.ListConn()
+			//pp.Println(user.UM.AcpConnections)
 		default:
 			return
 		}

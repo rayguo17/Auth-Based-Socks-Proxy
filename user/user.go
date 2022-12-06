@@ -1,6 +1,7 @@
 package user
 
 import (
+	"strconv"
 	"time"
 )
 
@@ -23,6 +24,13 @@ type Access struct {
 	WhiteList []string `json:"white_list"`
 }
 
+func (u *User) GetActCon() string {
+	return strconv.Itoa(u.ActiveConn)
+}
+func (u *User) GetTotalCon() string {
+	return strconv.Itoa(u.TotalConn)
+}
+
 func (u *User) DelUser() {
 	u.Deleted = true
 }
@@ -36,14 +44,23 @@ func (u *User) AddConCount() {
 func (u *User) SetDeleted() {
 	u.Deleted = true
 }
+func (u *User) GetUpTraffic() string {
+	return strconv.FormatInt(u.UplinkTraffic, 10)
+}
+func (u *User) GetDownTraffic() string {
+	return strconv.FormatInt(u.DownLinkTraffic, 10)
+}
+func (u *User) IsEnabled() bool {
+	return u.Enable
+}
 func (u *User) IsDeleted() bool {
 	return u.Deleted
 }
 func (u *User) Occupied() bool {
 	if u.ActiveConn != 0 {
-		return false
+		return true
 	}
-	return true
+	return false
 }
 func (u *User) GetName() string {
 	return u.Username

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/k0kubun/pp/v3"
 	"github.com/rayguo17/go-socks/util"
 	"log"
 	"os"
@@ -21,7 +20,7 @@ type Manager struct {
 	DelUserChannel        chan *NameWrap
 	CmdChannel            chan string                   //for read write
 	AcpConnections        map[string]map[string]*AcpCon //hash map, each user have a acp connections list.
-	printChannel          chan bool
+	PrintUserChannel      chan bool
 	AddConChannel         chan *AcpCon //after assertion need to notify, once notify done, can be continued.
 	DelConChannel         chan string  // use string to delete
 	ChangePwdChannel      chan *ChangePwdWrap
@@ -35,8 +34,8 @@ type Manager struct {
 var UM Manager
 var filePath string = "./user.json"
 
-func (um *Manager) ListUser() {
-	um.printChannel <- true
+func (um *Manager) ListUsers() {
+	um.PrintUserChannel <- true
 }
 func (um *Manager) MainRoutine(startChan chan bool) {
 	startChan <- true
@@ -44,8 +43,6 @@ func (um *Manager) MainRoutine(startChan chan bool) {
 		select {
 		case command := <-um.CmdChannel:
 			um.handleCommand(command)
-		case <-um.printChannel:
-			pp.Println(um.Users)
 		case acpCon := <-um.AddConChannel:
 			um.handleAddCon(acpCon)
 		case id := <-um.DelConChannel:
@@ -68,9 +65,19 @@ func (um *Manager) MainRoutine(startChan chan bool) {
 			um.handleCheckRuleset(wrap)
 		case <-um.PrintConnChannel:
 			um.handlePrintConn()
+		case <-um.PrintUserChannel:
+			um.handleUserPrintConn()
 		}
 	}
 
+}
+func (um *Manager) handleUserPrintConn() {
+	up := util.NewUserPrinter(len(um.Users))
+	for _, user := range um.Users {
+		entry := util.NewUserEntry(user.GetName(), user.GetUpTraffic(), user.GetDownTraffic(), util.BoolToString(user.IsEnabled()), util.BoolToString(user.IsDeleted()), user.GetLastSeen(), user.GetActCon(), user.GetTotalCon())
+		up.AddUser(entry)
+	}
+	up.PrintStatus()
 }
 func (um *Manager) handlePrintConn() {
 	cp := util.NewConnPrinter(um.ActiveConnectionCount, um.TotalConnectionCount)
@@ -204,7 +211,7 @@ func (um *Manager) removeNthUser(i int) {
 	um.Users[i] = um.Users[size-1]
 	um.Users = um.Users[:size-1]
 }
-func (um *Manager) PrintConn() {
+func (um *Manager) ListConn() {
 	um.PrintConnChannel <- true
 }
 func (um *Manager) AddCon(con *AcpCon) {
@@ -272,10 +279,10 @@ func init() {
 	UM.UploadTrafficChannel = make(chan *UploadTrafficWrap)
 	UM.CheckRulesetChannel = make(chan *CheckRulesetWrap)
 	UM.PrintConnChannel = make(chan bool)
+	UM.PrintUserChannel = make(chan bool)
 
 	UM.AddConChannel = make(chan *AcpCon)
 	UM.DelConChannel = make(chan string)
-	UM.printChannel = make(chan bool)
 	UM.CmdChannel = make(chan string)
 	UM.AcpConnections = make(map[string]map[string]*AcpCon)
 	//pp.Println(UM)
