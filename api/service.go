@@ -8,6 +8,10 @@ import (
 	"time"
 )
 
+type DelParams struct {
+	Username string `json:"username"`
+}
+
 func GetAllUser() *util.Response {
 	informChan := make(chan []*user.Display)
 	getAlluserWrap := user.NewGAUWrap(informChan)
@@ -27,4 +31,26 @@ func GetAllUser() *util.Response {
 		return res
 	}
 
+}
+func AddUser(u *user.User) *util.Response {
+	c := make(chan *util.Response)
+	uw := user.NUWrap(u, c)
+	user.UM.AddUser(uw)
+	select {
+	case res := <-c:
+		return res
+	case <-time.After(time.Second * 5):
+		return util.NewResponse(-1, "get user timeout", nil)
+	}
+}
+func DelUser(d *DelParams) *util.Response {
+	c := make(chan *util.Response)
+	nwrap := user.NNWrap(d.Username, c)
+	user.UM.DelUser(nwrap)
+	select {
+	case res := <-c:
+		return res
+	case <-time.After(time.Second * 5):
+		return util.NewResponse(-1, "get user timeout", nil)
+	}
 }

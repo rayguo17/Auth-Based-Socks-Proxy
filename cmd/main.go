@@ -177,7 +177,6 @@ func acceptHandler(conn net.Conn) {
 		return
 	}
 	//
-	select {}
 	return
 
 }

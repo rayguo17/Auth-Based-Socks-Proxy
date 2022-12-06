@@ -9,9 +9,23 @@ type UserWrap struct {
 	informChan chan *util.Response
 }
 
+func NUWrap(u *User, c chan *util.Response) *UserWrap {
+	return &UserWrap{
+		user:       u,
+		informChan: c,
+	}
+}
+
 type NameWrap struct {
 	Username   string
 	informChan chan *util.Response
+}
+
+func NNWrap(name string, c chan *util.Response) *NameWrap {
+	return &NameWrap{
+		name,
+		c,
+	}
 }
 
 type ChangePwdWrap struct {

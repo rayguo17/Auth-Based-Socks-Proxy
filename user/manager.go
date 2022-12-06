@@ -86,10 +86,15 @@ func (um *Manager) handlePrintConn() {
 
 func (um *Manager) handleCheckRuleset(wrap *CheckRulesetWrap) {
 
-	user, err := um.findUserByName(wrap.Username)
+	_, user, err := um.findUserByName(wrap.Username)
 	if err != nil {
 		//log.Println("find user fail")
 		res := util.NewResponse(-1, err.Error(), nil)
+		wrap.informChan <- res
+		return
+	}
+	if user.Deleted || !user.Enable {
+		res := util.NewResponse(-1, "user deleted or not enabled", nil)
 		wrap.informChan <- res
 		return
 	}
@@ -122,16 +127,16 @@ func (um *Manager) handleCheckRuleset(wrap *CheckRulesetWrap) {
 	//log.Println("ending check rule set")
 }
 func (um *Manager) handleTrafficUpload(wrap *UploadTrafficWrap) {
-	user, err := um.findUserByName(wrap.Username)
+	_, user, err := um.findUserByName(wrap.Username)
 	if err != nil {
 		res := util.NewResponse(-1, err.Error(), nil)
 		wrap.informChan <- res
 		return
 	}
 	if wrap.up {
-		user.uplinkTraffic += wrap.count
+		user.UplinkTraffic += wrap.count
 	} else {
-		user.downLinkTraffic += wrap.count
+		user.DownLinkTraffic += wrap.count
 	}
 	user.lastSeen = time.Now()
 	res := util.NewResponse(0, "", nil)
@@ -148,12 +153,7 @@ func (um *Manager) handleTrafficReq(wrap *TrafficReqWrap) {
 func (um *Manager) handleChangePwd(wrap *ChangePwdWrap) {
 
 }
-func (um *Manager) handleDelUser(wrap *NameWrap) {
 
-}
-func (um *Manager) handleAddUser(wrap *UserWrap) {
-
-}
 func (um *Manager) CheckRuleset(wrap *CheckRulesetWrap) {
 	um.CheckRulesetChannel <- wrap
 }
@@ -172,8 +172,14 @@ func (um *Manager) handleDelCon(id string) {
 	if user, ok := um.AcpConnections[idArr[0]]; ok {
 		if cons, ok := user[idArr[1]]; ok {
 			delete(user, idArr[1])
+			index, user, err := um.findUserByName(idArr[0])
+			if err != nil {
+				log.Fatal("user not found when deleting")
+			}
+			user.SubActiveConn()
 			um.ActiveConnectionCount -= 1
 			cons.acpDelChan <- true
+			um.CheckDeletedUser(user, index)
 		} else {
 			//connection not found
 			log.Fatal("connection not found")
@@ -184,6 +190,20 @@ func (um *Manager) handleDelCon(id string) {
 	}
 
 }
+func (um *Manager) CheckDeletedUser(u *User, i int) {
+	//only the last connection could be able to delete
+	if !u.Occupied() && u.IsDeleted() {
+		//delete user acpCon entry.
+		delete(um.AcpConnections, u.GetName())
+		//delete user TODO://persistent???
+		um.removeNthUser(i) //depend on user find correctness
+	}
+}
+func (um *Manager) removeNthUser(i int) {
+	size := len(um.Users)
+	um.Users[i] = um.Users[size-1]
+	um.Users = um.Users[:size-1]
+}
 func (um *Manager) PrintConn() {
 	um.PrintConnChannel <- true
 }
@@ -191,7 +211,7 @@ func (um *Manager) AddCon(con *AcpCon) {
 	um.AddConChannel <- con
 }
 func (um *Manager) handleAddCon(acpCon *AcpCon) {
-	user, err := um.findUserByName(acpCon.username)
+	_, user, err := um.findUserByName(acpCon.username)
 	if err != nil {
 		acpCon.AuthChan <- false
 		return
@@ -200,23 +220,28 @@ func (um *Manager) handleAddCon(acpCon *AcpCon) {
 		acpCon.AuthChan <- false
 		return
 	}
-	acpCon.owner = user
-	if _, ok := um.AcpConnections[user.Username]; !ok {
-		um.AcpConnections[user.Username] = make(map[string]*AcpCon, 0)
+	if user.Deleted || !user.Enable {
+		acpCon.AuthChan <- false
+		return
 	}
-	um.AcpConnections[user.Username][acpCon.id] = acpCon
+	acpCon.owner = user
+	if _, ok := um.AcpConnections[user.GetName()]; !ok {
+		um.AcpConnections[user.GetName()] = make(map[string]*AcpCon, 0)
+	}
+	um.AcpConnections[user.GetName()][acpCon.id] = acpCon
 	um.ActiveConnectionCount += 1
 	um.TotalConnectionCount += 1
+	user.AddConCount()
 	acpCon.AuthChan <- true
 
 }
-func (um *Manager) findUserByName(uname string) (*User, error) {
+func (um *Manager) findUserByName(uname string) (int, *User, error) {
 	for i := 0; i < len(um.Users); i++ {
 		if um.Users[i].Username == uname {
-			return um.Users[i], nil
+			return i, um.Users[i], nil
 		}
 	}
-	return nil, errors.New("user not found")
+	return -1, nil, errors.New("user not found")
 }
 func (um *Manager) handleCommand(cmd string) {
 	fmt.Println("cmd received:", cmd)

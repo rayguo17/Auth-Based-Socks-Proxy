@@ -90,6 +90,15 @@ func (acp *AcpCon) ProtocolClose() {
 	}
 	acp.handleClose()
 }
+func (acp *AcpCon) CloseTrigger() {
+	if acp.status == Working {
+
+		acp.manualCloseChan <- true
+	}
+	if acp.status == CmdRecv || acp.status == AuthDone {
+		acp.ProtocolClose()
+	}
+}
 
 //could be manually killed or by closing the socket.
 func (acpCon *AcpCon) ManualClose() {

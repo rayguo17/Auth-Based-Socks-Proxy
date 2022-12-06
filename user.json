@@ -2,6 +2,7 @@
   {
     "username": "anonymous",
     "password": "",
+    "enable": true,
     "access": {
       "black": true,
       "black_list": [
@@ -13,6 +14,7 @@
   {
     "username": "rayguo",
     "password": "123123",
+    "enable": true,
     "access": {
       "black": true,
       "black_list": [
@@ -24,6 +26,7 @@
   {
     "username": "latina",
     "password": "tilda123",
+    "enable": true,
     "access": {
       "black": true,
       "black_list": [],
