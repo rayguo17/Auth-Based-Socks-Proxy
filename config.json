@@ -1,0 +1,8 @@
+{
+  "port": 5000,
+  "log": {
+    "debug": "STDOUT",
+    "access": "STDOUT"
+  },
+  "user_config": "./user.json"
+}

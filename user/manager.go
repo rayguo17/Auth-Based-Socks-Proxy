@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/rayguo17/go-socks/util"
-	"log"
+	"github.com/rayguo17/go-socks/util/logger"
 	"os"
 	"strings"
 	"time"
@@ -115,6 +115,7 @@ func (um *Manager) handleCheckRuleset(wrap *CheckRulesetWrap) {
 				return
 			}
 		}
+
 		res := util.NewResponse(0, "", nil)
 		wrap.informChan <- res
 		return
@@ -181,7 +182,7 @@ func (um *Manager) handleDelCon(id string) {
 			delete(user, idArr[1])
 			index, user, err := um.findUserByName(idArr[0])
 			if err != nil {
-				log.Fatal("user not found when deleting")
+				logger.Debug.Fatal("user not found when deleting")
 			}
 			user.SubActiveConn()
 			um.ActiveConnectionCount -= 1
@@ -189,11 +190,11 @@ func (um *Manager) handleDelCon(id string) {
 			um.CheckDeletedUser(user, index)
 		} else {
 			//connection not found
-			log.Fatal("connection not found")
+			logger.Debug.Fatal("connection not found")
 			return
 		}
 	} else {
-		log.Fatal("user not found!")
+		logger.Debug.Fatal("user not found!")
 	}
 
 }
@@ -220,14 +221,17 @@ func (um *Manager) AddCon(con *AcpCon) {
 func (um *Manager) handleAddCon(acpCon *AcpCon) {
 	_, user, err := um.findUserByName(acpCon.username)
 	if err != nil {
+		logger.Access.Println(acpCon.Log() + " rejected user does not exist")
 		acpCon.AuthChan <- false
 		return
 	}
 	if user.Password != acpCon.passwd {
+		logger.Access.Println(acpCon.Log() + " rejected password incorrect")
 		acpCon.AuthChan <- false
 		return
 	}
 	if user.Deleted || !user.Enable {
+		logger.Access.Println(acpCon.Log() + " rejected user deleted or not enabled")
 		acpCon.AuthChan <- false
 		return
 	}
@@ -253,18 +257,17 @@ func (um *Manager) findUserByName(uname string) (int, *User, error) {
 func (um *Manager) handleCommand(cmd string) {
 	fmt.Println("cmd received:", cmd)
 }
-func init() {
+func (um *Manager) Initialize(path string) error {
 	//read from json file, then form user group
 	var Users []*User
 
-	fileBytes, err := os.ReadFile(filePath)
+	fileBytes, err := os.ReadFile(path)
 	if err != nil {
-		log.Fatal("read file failed")
-		return
+		return err
 	}
 	err = json.Unmarshal(fileBytes, &Users)
 	if err != nil {
-		log.Fatal("unmarshal failed", err.Error())
+		return err
 	}
 	//pp.Println(Users)
 	UM.Users = Users
@@ -286,4 +289,5 @@ func init() {
 	UM.CmdChannel = make(chan string)
 	UM.AcpConnections = make(map[string]map[string]*AcpCon)
 	//pp.Println(UM)
+	return nil
 }

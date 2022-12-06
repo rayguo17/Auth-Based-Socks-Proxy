@@ -6,7 +6,9 @@ package user
 
 import (
 	"errors"
+	"fmt"
 	"github.com/rayguo17/go-socks/util"
+	"github.com/rayguo17/go-socks/util/logger"
 	"log"
 	"net"
 	"time"
@@ -75,7 +77,10 @@ func NewCon(id string, conn net.Conn, username string, passwd string) AcpCon {
 		status:   AuthDone,
 	}
 }
-
+func (acpCon *AcpCon) Log() string {
+	str := fmt.Sprintf("%v %v %v", acpCon.username, acpCon.id, acpCon.RemoteAddress())
+	return str
+}
 func (acpCon *AcpCon) EndCommand() {
 	if acpCon.status == Dead {
 		//fmt.Println("already dead")
@@ -188,6 +193,7 @@ func (acpCon *AcpCon) ConnectCmd(addr util.Address) error {
 	select {
 	case resp := <-informChan:
 		if resp.GetErrCode() != 0 {
+			logger.Access.Println(acpCon.Log() + " " + addStr + " " + resp.GetErrMsg())
 			return errors.New(resp.GetErrMsg())
 		}
 	case <-time.After(time.Second * 5):
@@ -201,8 +207,10 @@ func (acpCon *AcpCon) ConnectCmd(addr util.Address) error {
 	}
 	//success, create executor
 	acpCon.cmdClosedChan = make(chan bool)
+
 	connectExe := NewConExe(acpCon.cmdClosedChan, conn, addr, acpCon)
 	acpCon.cmdExecutor = connectExe
+	logger.Access.Println(acpCon.Log() + " accepted")
 	//fmt.Println("command execute")
 	return nil
 }
