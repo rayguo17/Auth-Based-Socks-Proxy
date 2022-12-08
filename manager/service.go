@@ -1,11 +1,12 @@
-package user
+package manager
 
 import (
 	"encoding/json"
+	"github.com/rayguo17/go-socks/manager/common"
 	"github.com/rayguo17/go-socks/util"
 )
 
-//act as user service... return server structure.
+//act as manager service... return light structure.
 
 type Display struct {
 	Username string
@@ -41,49 +42,49 @@ func (um *Manager) HandleGetAllUser(wrap *GetAllUserWrap) {
 	}
 	wrap.informChan <- res
 }
-func (um *Manager) AddUser(wrap *UserWrap) {
+func (um *Manager) AddUser(wrap *common.UserWrap) {
 	go func() {
 		um.AddUserChannel <- wrap
 	}()
 }
-func (um *Manager) handleAddUser(wrap *UserWrap) {
-	_, _, err := um.findUserByName(wrap.user.GetName())
+func (um *Manager) handleAddUser(wrap *common.UserWrap) {
+	_, _, err := um.findUserByName(wrap.User.GetName())
 	if err == nil {
-		res := util.NewResponse(-1, "user already exist", nil)
-		wrap.informChan <- res
+		res := util.NewResponse(-1, "manager already exist", nil)
+		wrap.InformChan <- res
 		return
 	}
-	um.Users = append(um.Users, wrap.user)
+	um.Users = append(um.Users, wrap.User)
 	userConfig := &Display{
-		Username: wrap.user.GetName(),
-		LastSeen: wrap.user.GetLastSeen(),
-		Black:    wrap.user.GetBlack(),
+		Username: wrap.User.GetName(),
+		LastSeen: wrap.User.GetLastSeen(),
+		Black:    wrap.User.GetBlack(),
 	}
 	data, err := json.Marshal(userConfig)
 	if err != nil {
 		res := util.NewResponse(-1, err.Error(), nil)
-		wrap.informChan <- res
+		wrap.InformChan <- res
 		return
 	}
 	res := util.NewResponse(0, "", data)
-	wrap.informChan <- res
+	wrap.InformChan <- res
 	return
 }
-func (um *Manager) DelUser(wrap *NameWrap) {
+func (um *Manager) DelUser(wrap *common.NameWrap) {
 	go func() {
 		um.DelUserChannel <- wrap
 	}()
 }
-func (um *Manager) handleDelUser(wrap *NameWrap) {
-	//delete all acp connections. then del user.
+func (um *Manager) handleDelUser(wrap *common.NameWrap) {
+	//delete all acp connections. then del manager.
 	//should set it to diable, and then wait until all its connection end. delete it.
 	i, user, err := um.findUserByName(wrap.Username)
 	if err != nil {
-		wrap.informChan <- util.NewResponse(-1, err.Error(), nil)
+		wrap.InformChan <- util.NewResponse(-1, err.Error(), nil)
 		return
 	}
 	user.SetDeleted()
 	um.CheckDeletedUser(user, i)
-	wrap.informChan <- util.NewResponse(0, "", nil)
+	wrap.InformChan <- util.NewResponse(0, "", nil)
 	return
 }

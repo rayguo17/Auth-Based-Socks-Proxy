@@ -3,6 +3,9 @@
     "username": "anonymous",
     "password": "",
     "enable": true,
+    "route": {
+      "type": "Direct"
+    },
     "access": {
       "black": true,
       "black_list": [
@@ -15,6 +18,10 @@
     "username": "rayguo",
     "password": "123123",
     "enable": true,
+    "route": {
+      "type": "Remote",
+      "remote": "127.0.0.1:5002"
+    },
     "access": {
       "black": true,
       "black_list": [

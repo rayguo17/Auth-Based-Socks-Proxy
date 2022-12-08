@@ -17,6 +17,11 @@ type User struct {
 	Access          Access `json:"access"`
 	ActiveConn      int
 	TotalConn       int
+	route           Route `json:"route"`
+}
+type Route struct {
+	Type   string `json:"type"`   // Direct | Remote
+	Remote string `json:"remote"` // ip:port
 }
 type Access struct {
 	Black     bool     `json:"black"`
@@ -29,6 +34,9 @@ func (u *User) GetActCon() string {
 }
 func (u *User) GetTotalCon() string {
 	return strconv.Itoa(u.TotalConn)
+}
+func (u *User) SetLastSeen(time2 time.Time) {
+	u.lastSeen = time2
 }
 
 func (u *User) DelUser() {

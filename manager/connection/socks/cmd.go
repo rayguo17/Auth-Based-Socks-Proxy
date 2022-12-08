@@ -1,4 +1,4 @@
-package user
+package socks
 
 type Cmd interface {
 	Start() error //start executor

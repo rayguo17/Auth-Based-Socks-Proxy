@@ -3,7 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/rayguo17/go-socks/user"
+	"github.com/rayguo17/go-socks/manager/user"
 	"io"
 	"net/http"
 )
@@ -32,7 +32,7 @@ func handleUser(w http.ResponseWriter, r *http.Request) {
 }
 
 //make a logger
-//if possible divide client and server
+//if possible divide client and light
 
 func getAllUser(w http.ResponseWriter, r *http.Request) {
 	//fmt.Println("Get User")

@@ -1,9 +1,12 @@
-package user
+package manager
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/rayguo17/go-socks/manager/common"
+	"github.com/rayguo17/go-socks/manager/connection/socks"
+	"github.com/rayguo17/go-socks/manager/user"
 	"github.com/rayguo17/go-socks/util"
 	"github.com/rayguo17/go-socks/util/logger"
 	"os"
@@ -12,27 +15,27 @@ import (
 )
 
 type Manager struct {
-	Users                 []*User
+	Users                 []*user.User
 	ActiveConnectionCount int
 	TotalConnectionCount  int
 	GetUserChannel        chan *GetAllUserWrap
-	AddUserChannel        chan *UserWrap
-	DelUserChannel        chan *NameWrap
-	CmdChannel            chan string                   //for read write
-	AcpConnections        map[string]map[string]*AcpCon //hash map, each user have a acp connections list.
+	AddUserChannel        chan *common.UserWrap
+	DelUserChannel        chan *common.NameWrap
+	CmdChannel            chan string                         //for read write
+	AcpConnections        map[string]map[string]*socks.AcpCon //hash map, each manager have a acp connections list.
 	PrintUserChannel      chan bool
-	AddConChannel         chan *AcpCon //after assertion need to notify, once notify done, can be continued.
-	DelConChannel         chan string  // use string to delete
-	ChangePwdChannel      chan *ChangePwdWrap
-	TrafficReqChannel     chan *TrafficReqWrap
-	RulesetModChannel     chan *RulesetModWrap
-	UploadTrafficChannel  chan *UploadTrafficWrap
-	CheckRulesetChannel   chan *CheckRulesetWrap
+	AddConChannel         chan *socks.AcpCon  //after assertion need to notify, once notify done, can be continued.
+	DelConChannel         chan *common.DCWrap // use string to delete
+	ChangePwdChannel      chan *common.ChangePwdWrap
+	TrafficReqChannel     chan *common.TrafficReqWrap
+	RulesetModChannel     chan *common.RulesetModWrap
+	UploadTrafficChannel  chan *common.UploadTrafficWrap
+	CheckRulesetChannel   chan *common.CheckRulesetWrap
 	PrintConnChannel      chan bool
 }
 
 var UM Manager
-var filePath string = "./user.json"
+var filePath string = "./manager.json"
 
 func (um *Manager) ListUsers() {
 	um.PrintUserChannel <- true
@@ -71,6 +74,9 @@ func (um *Manager) MainRoutine(startChan chan bool) {
 	}
 
 }
+func (um *Manager) GetConCommunicator() *common.Communicator {
+	return common.NewCommunicator(um.CheckRulesetChannel, um.UploadTrafficChannel, um.DelConChannel)
+}
 func (um *Manager) handleUserPrintConn() {
 	up := util.NewUserPrinter(len(um.Users))
 	for _, user := range um.Users {
@@ -84,25 +90,25 @@ func (um *Manager) handlePrintConn() {
 	for username, acpMap := range um.AcpConnections {
 		for id, acp := range acpMap {
 
-			conn := util.NewConnection(id, username, acp.RemoteAddress(), EXECSTATUS[acp.ExecutorStatus()], ACPSTATUSMAP[acp.status], CMDMap[acp.cmdType])
+			conn := util.NewConnection(id, username, acp.RemoteAddress(), socks.EXECSTATUS[acp.ExecutorStatus()], socks.ACPSTATUSMAP[acp.GetStatus()], socks.CMDMap[acp.GetCmdType()])
 			cp.AddCon(conn)
 		}
 	}
 	cp.PrintStatus()
 }
 
-func (um *Manager) handleCheckRuleset(wrap *CheckRulesetWrap) {
+func (um *Manager) handleCheckRuleset(wrap *common.CheckRulesetWrap) {
 
 	_, user, err := um.findUserByName(wrap.Username)
 	if err != nil {
-		//log.Println("find user fail")
+		//log.Println("find manager fail")
 		res := util.NewResponse(-1, err.Error(), nil)
-		wrap.informChan <- res
+		wrap.InformChan <- res
 		return
 	}
 	if user.Deleted || !user.Enable {
-		res := util.NewResponse(-1, "user deleted or not enabled", nil)
-		wrap.informChan <- res
+		res := util.NewResponse(-1, "manager deleted or not enabled", nil)
+		wrap.InformChan <- res
 		return
 	}
 	if user.Access.Black {
@@ -111,82 +117,86 @@ func (um *Manager) handleCheckRuleset(wrap *CheckRulesetWrap) {
 		for _, v := range user.Access.BlackList {
 			if v == wrap.DstAddr {
 				res := util.NewResponse(-1, "dst addr in blacklist, access denied", nil)
-				wrap.informChan <- res
+				wrap.InformChan <- res
 				return
 			}
 		}
 
 		res := util.NewResponse(0, "", nil)
-		wrap.informChan <- res
+		wrap.InformChan <- res
 		return
 	} else {
 		//log.Println("finding in white list")
 		for _, v := range user.Access.WhiteList {
 			if v == wrap.DstAddr {
 				res := util.NewResponse(0, "", nil)
-				wrap.informChan <- res
+				wrap.InformChan <- res
 				return
 			}
 		}
 		res := util.NewResponse(-1, "dst addr not in whitelist, access denied", nil)
-		wrap.informChan <- res
+		wrap.InformChan <- res
 		return
 	}
 	//log.Println("ending check rule set")
 }
-func (um *Manager) handleTrafficUpload(wrap *UploadTrafficWrap) {
+func (um *Manager) handleTrafficUpload(wrap *common.UploadTrafficWrap) {
 	_, user, err := um.findUserByName(wrap.Username)
 	if err != nil {
 		res := util.NewResponse(-1, err.Error(), nil)
-		wrap.informChan <- res
+		wrap.InformChan <- res
 		return
 	}
-	if wrap.up {
-		user.UplinkTraffic += wrap.count
+	if wrap.Up {
+		user.UplinkTraffic += wrap.Count
 	} else {
-		user.DownLinkTraffic += wrap.count
+		user.DownLinkTraffic += wrap.Count
 	}
-	user.lastSeen = time.Now()
+	user.SetLastSeen(time.Now())
 	res := util.NewResponse(0, "", nil)
-	wrap.informChan <- res
+	wrap.InformChan <- res
 
 	return
 }
-func (um *Manager) handleRulesetMod(wrap *RulesetModWrap) {
+func (um *Manager) handleRulesetMod(wrap *common.RulesetModWrap) {
 
 }
-func (um *Manager) handleTrafficReq(wrap *TrafficReqWrap) {
+func (um *Manager) handleTrafficReq(wrap *common.TrafficReqWrap) {
 
 }
-func (um *Manager) handleChangePwd(wrap *ChangePwdWrap) {
+func (um *Manager) handleChangePwd(wrap *common.ChangePwdWrap) {
 
 }
 
-func (um *Manager) CheckRuleset(wrap *CheckRulesetWrap) {
+func (um *Manager) CheckRuleset(wrap *common.CheckRulesetWrap) {
 	um.CheckRulesetChannel <- wrap
 }
-func (um *Manager) UploadTraffic(wrap *UploadTrafficWrap) {
-	um.UploadTrafficChannel <- wrap
+func (um *Manager) UploadTraffic(wrap *common.UploadTrafficWrap) {
+	go func() {
+		um.UploadTrafficChannel <- wrap
+	}()
 }
-func (um *Manager) DelCon(id string) {
+func (um *Manager) DelCon(id *common.DCWrap) {
 	//fmt.Println("Del con received")
 	um.DelConChannel <- id
 }
-func (um *Manager) handleDelCon(id string) {
+func (um *Manager) handleDelCon(wrap *common.DCWrap) {
 	//username|ip:port
 	//fmt.Println("delete handling")
 	//fmt.Println(id)
+	id := wrap.Id
 	idArr := strings.Split(id, "|")
 	if user, ok := um.AcpConnections[idArr[0]]; ok {
-		if cons, ok := user[idArr[1]]; ok {
+		if _, ok := user[idArr[1]]; ok {
 			delete(user, idArr[1])
 			index, user, err := um.findUserByName(idArr[0])
 			if err != nil {
-				logger.Debug.Fatal("user not found when deleting")
+				logger.Debug.Fatal("manager not found when deleting")
 			}
 			user.SubActiveConn()
 			um.ActiveConnectionCount -= 1
-			cons.acpDelChan <- true
+			res := util.NewResponse(0, "", nil)
+			wrap.InformChan <- res
 			um.CheckDeletedUser(user, index)
 		} else {
 			//connection not found
@@ -194,17 +204,17 @@ func (um *Manager) handleDelCon(id string) {
 			return
 		}
 	} else {
-		logger.Debug.Fatal("user not found!")
+		logger.Debug.Fatal("manager not found!")
 	}
 
 }
-func (um *Manager) CheckDeletedUser(u *User, i int) {
+func (um *Manager) CheckDeletedUser(u *user.User, i int) {
 	//only the last connection could be able to delete
 	if !u.Occupied() && u.IsDeleted() {
-		//delete user acpCon entry.
+		//delete manager acpCon entry.
 		delete(um.AcpConnections, u.GetName())
-		//delete user TODO://persistent???
-		um.removeNthUser(i) //depend on user find correctness
+		//delete manager TODO://persistent???
+		um.removeNthUser(i) //depend on manager find correctness
 	}
 }
 func (um *Manager) removeNthUser(i int) {
@@ -215,51 +225,51 @@ func (um *Manager) removeNthUser(i int) {
 func (um *Manager) ListConn() {
 	um.PrintConnChannel <- true
 }
-func (um *Manager) AddCon(con *AcpCon) {
+func (um *Manager) AddCon(con *socks.AcpCon) {
 	um.AddConChannel <- con
 }
-func (um *Manager) handleAddCon(acpCon *AcpCon) {
-	_, user, err := um.findUserByName(acpCon.username)
+func (um *Manager) handleAddCon(acpCon *socks.AcpCon) {
+	_, user, err := um.findUserByName(acpCon.GetName())
 	if err != nil {
-		logger.Access.Println(acpCon.Log() + " rejected user does not exist")
+		logger.Access.Println(acpCon.Log() + " rejected manager does not exist")
 		acpCon.AuthChan <- false
 		return
 	}
-	if user.Password != acpCon.passwd {
+	if user.Password != acpCon.GetPasswd() {
 		logger.Access.Println(acpCon.Log() + " rejected password incorrect")
 		acpCon.AuthChan <- false
 		return
 	}
 	if user.Deleted || !user.Enable {
-		logger.Access.Println(acpCon.Log() + " rejected user deleted or not enabled")
+		logger.Access.Println(acpCon.Log() + " rejected manager deleted or not enabled")
 		acpCon.AuthChan <- false
 		return
 	}
-	acpCon.owner = user
+	acpCon.SetOwner(user)
 	if _, ok := um.AcpConnections[user.GetName()]; !ok {
-		um.AcpConnections[user.GetName()] = make(map[string]*AcpCon, 0)
+		um.AcpConnections[user.GetName()] = make(map[string]*socks.AcpCon, 0)
 	}
-	um.AcpConnections[user.GetName()][acpCon.id] = acpCon
+	um.AcpConnections[user.GetName()][acpCon.GetID()] = acpCon
 	um.ActiveConnectionCount += 1
 	um.TotalConnectionCount += 1
 	user.AddConCount()
 	acpCon.AuthChan <- true
 
 }
-func (um *Manager) findUserByName(uname string) (int, *User, error) {
+func (um *Manager) findUserByName(uname string) (int, *user.User, error) {
 	for i := 0; i < len(um.Users); i++ {
 		if um.Users[i].Username == uname {
 			return i, um.Users[i], nil
 		}
 	}
-	return -1, nil, errors.New("user not found")
+	return -1, nil, errors.New("manager not found")
 }
 func (um *Manager) handleCommand(cmd string) {
 	fmt.Println("cmd received:", cmd)
 }
 func (um *Manager) Initialize(path string) error {
-	//read from json file, then form user group
-	var Users []*User
+	//read from json file, then form manager group
+	var Users []*user.User
 
 	fileBytes, err := os.ReadFile(path)
 	if err != nil {
@@ -274,20 +284,20 @@ func (um *Manager) Initialize(path string) error {
 	//initialize UM channel
 
 	UM.GetUserChannel = make(chan *GetAllUserWrap)
-	UM.AddUserChannel = make(chan *UserWrap)
-	UM.DelUserChannel = make(chan *NameWrap)
-	UM.ChangePwdChannel = make(chan *ChangePwdWrap)
-	UM.TrafficReqChannel = make(chan *TrafficReqWrap)
-	UM.RulesetModChannel = make(chan *RulesetModWrap)
-	UM.UploadTrafficChannel = make(chan *UploadTrafficWrap)
-	UM.CheckRulesetChannel = make(chan *CheckRulesetWrap)
+	UM.AddUserChannel = make(chan *common.UserWrap)
+	UM.DelUserChannel = make(chan *common.NameWrap)
+	UM.ChangePwdChannel = make(chan *common.ChangePwdWrap)
+	UM.TrafficReqChannel = make(chan *common.TrafficReqWrap)
+	UM.RulesetModChannel = make(chan *common.RulesetModWrap)
+	UM.UploadTrafficChannel = make(chan *common.UploadTrafficWrap)
+	UM.CheckRulesetChannel = make(chan *common.CheckRulesetWrap)
 	UM.PrintConnChannel = make(chan bool)
 	UM.PrintUserChannel = make(chan bool)
 
-	UM.AddConChannel = make(chan *AcpCon)
-	UM.DelConChannel = make(chan string)
+	UM.AddConChannel = make(chan *socks.AcpCon)
+	UM.DelConChannel = make(chan *common.DCWrap)
 	UM.CmdChannel = make(chan string)
-	UM.AcpConnections = make(map[string]map[string]*AcpCon)
+	UM.AcpConnections = make(map[string]map[string]*socks.AcpCon)
 	//pp.Println(UM)
 	return nil
 }

@@ -21,6 +21,9 @@ func (da *DomainAddr) Addr() string {
 	sb.Write(da.addr)
 	return sb.String()
 }
+func (da *DomainAddr) Port() [2]byte {
+	return da.port
+}
 func (da *DomainAddr) String() string {
 	sb := strings.Builder{}
 	sb.Write(da.addr)

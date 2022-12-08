@@ -3,9 +3,11 @@ package socks
 import (
 	"errors"
 	"fmt"
-	"github.com/rayguo17/go-socks/user"
+	"github.com/rayguo17/go-socks/manager"
+	"github.com/rayguo17/go-socks/manager/connection/socks"
 	"github.com/rayguo17/go-socks/util"
 	"net"
+	"time"
 )
 
 //how to encapsulate protocol??
@@ -20,9 +22,9 @@ const (
 
 //Manager Address through interface??
 const (
-	Ipv4Address   int = 1
-	DomainAddress     = 3
-	Ipv6Address       = 4
+	Ipv4Address   = 1
+	DomainAddress = 3
+	Ipv6Address   = 4
 )
 
 //Manage command through intercace?
@@ -43,7 +45,7 @@ type HandshakeReq struct {
 	AuthMethod []byte
 }
 
-//server response with the supported server
+//light response with the supported light
 type HandShakeResp struct {
 	Version    uint8
 	AuthMethod uint8
@@ -90,7 +92,7 @@ func FromByte(buf []byte, msgType int) (interface{}, error) {
 	case ClientCommand:
 		return buildCC(buf)
 	case ServerResponse:
-		fmt.Println("building server response")
+		fmt.Println("building light response")
 	default:
 		return nil, errors.New(fmt.Sprintf("unrecognized msgType: %d\n", msgType))
 	}
@@ -116,7 +118,7 @@ func FromStruct(target interface{}, msgType int) ([]byte, error) {
 	}
 	return nil, nil
 }
-func CommandHandle(cmd *ClientCmd, con *user.AcpCon) error {
+func CommandHandle(cmd *ClientCmd, con *socks.AcpCon) error {
 	switch cmd.Cmd {
 	case BIND:
 		//fmt.Println("BIND command")
@@ -129,7 +131,7 @@ func CommandHandle(cmd *ClientCmd, con *user.AcpCon) error {
 	}
 	return nil
 }
-func handleConnect(cmd *ClientCmd, con *user.AcpCon) error {
+func handleConnect(cmd *ClientCmd, con *socks.AcpCon) error {
 	var addr util.Address
 	switch int(cmd.Atyp) {
 	case Ipv4Address:
@@ -142,21 +144,26 @@ func handleConnect(cmd *ClientCmd, con *user.AcpCon) error {
 	return con.ConnectCmd(addr)
 
 }
-func Authenticate(authReq *AuthReq, conn net.Conn) (*user.AcpCon, error) {
+func Authenticate(authReq *AuthReq, conn net.Conn) (*socks.AcpCon, error) {
 	id := conn.RemoteAddr().String()
 	username := string(authReq.Uname)
 	passwd := string(authReq.Passwd)
-	acpCon := user.NewCon(id, conn, username, passwd)
-	user.UM.AddCon(&acpCon)
-	authStatus := <-acpCon.AuthChan
-	if !authStatus {
-		return nil, errors.New("authentication failed")
+	comm := manager.UM.GetConCommunicator()
+	acpCon := socks.NewCon(id, conn, username, passwd, comm)
+	manager.UM.AddCon(&acpCon)
+	select {
+	case authStatus := <-acpCon.AuthChan:
+		if !authStatus {
+			return nil, errors.New("authentication failed")
+		}
+		//fmt.Println("acpCon testing", acpCon)
+	case <-time.After(time.Second * 5):
+		return nil, errors.New("Authenticate manager timeout")
 	}
-	//fmt.Println("acpCon testing", acpCon)
 
 	return &acpCon, nil
 }
-func ConstructResp(con *user.AcpCon, msgType int) ([]byte, error) {
+func ConstructResp(con *socks.AcpCon, msgType int) ([]byte, error) {
 	switch msgType {
 	case HandShakeResponse:
 		fmt.Println("building handshake response")
@@ -170,12 +177,13 @@ func ConstructResp(con *user.AcpCon, msgType int) ([]byte, error) {
 	return nil, nil
 
 }
-func Anonymous(conn net.Conn) (*user.AcpCon, error) {
+func Anonymous(conn net.Conn) (*socks.AcpCon, error) {
 	id := conn.RemoteAddr().String()
 	username := "anonymous"
 	passwd := ""
-	acpCon := user.NewCon(id, conn, username, passwd)
-	user.UM.AddCon(&acpCon)
+	comm := manager.UM.GetConCommunicator()
+	acpCon := socks.NewCon(id, conn, username, passwd, comm)
+	manager.UM.AddCon(&acpCon)
 	authStatus := <-acpCon.AuthChan
 	if !authStatus {
 		return nil, errors.New("authentication failed")
@@ -230,7 +238,7 @@ func buildCC(buf []byte) (*ClientCmd, error) {
 	return res, nil
 }
 func buildAR(buf []byte) (*AuthReq, error) {
-	//interact with user
+	//interact with manager
 	res := &AuthReq{}
 	if buf[0] != 1 {
 		return nil, errors.New(fmt.Sprintf("auth version: %d not supported\n", buf[0]))

@@ -1,6 +1,8 @@
-package user
+package socks
 
-import "net"
+import (
+	"net"
+)
 
 type BindExecutor struct {
 	targetCon net.Conn

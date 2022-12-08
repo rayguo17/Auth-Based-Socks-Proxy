@@ -2,7 +2,9 @@ package api
 
 import (
 	"encoding/json"
-	"github.com/rayguo17/go-socks/user"
+	"github.com/rayguo17/go-socks/manager"
+	"github.com/rayguo17/go-socks/manager/common"
+	"github.com/rayguo17/go-socks/manager/user"
 	"github.com/rayguo17/go-socks/util"
 	"log"
 	"time"
@@ -13,9 +15,9 @@ type DelParams struct {
 }
 
 func GetAllUser() *util.Response {
-	informChan := make(chan []*user.Display)
-	getAlluserWrap := user.NewGAUWrap(informChan)
-	user.UM.GetAllUser(getAlluserWrap)
+	informChan := make(chan []*manager.Display)
+	getAlluserWrap := manager.NewGAUWrap(informChan)
+	manager.UM.GetAllUser(getAlluserWrap)
 	select {
 	case userConfigs := <-informChan:
 		//pp.Println(userConfigs)
@@ -26,31 +28,31 @@ func GetAllUser() *util.Response {
 		}
 		return util.NewResponse(0, "", data)
 	case <-time.After(time.Second * 5):
-		log.Println("get all user timeout")
-		res := util.NewResponse(-1, "get user timeout", nil)
+		log.Println("get all manager timeout")
+		res := util.NewResponse(-1, "get manager timeout", nil)
 		return res
 	}
 
 }
 func AddUser(u *user.User) *util.Response {
 	c := make(chan *util.Response)
-	uw := user.NUWrap(u, c)
-	user.UM.AddUser(uw)
+	uw := common.NUWrap(u, c)
+	manager.UM.AddUser(uw)
 	select {
 	case res := <-c:
 		return res
 	case <-time.After(time.Second * 5):
-		return util.NewResponse(-1, "get user timeout", nil)
+		return util.NewResponse(-1, "get manager timeout", nil)
 	}
 }
 func DelUser(d *DelParams) *util.Response {
 	c := make(chan *util.Response)
-	nwrap := user.NNWrap(d.Username, c)
-	user.UM.DelUser(nwrap)
+	nwrap := common.NNWrap(d.Username, c)
+	manager.UM.DelUser(nwrap)
 	select {
 	case res := <-c:
 		return res
 	case <-time.After(time.Second * 5):
-		return util.NewResponse(-1, "get user timeout", nil)
+		return util.NewResponse(-1, "get manager timeout", nil)
 	}
 }

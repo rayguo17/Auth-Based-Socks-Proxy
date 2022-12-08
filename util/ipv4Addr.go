@@ -26,6 +26,9 @@ func (ia *Ipv4Addr) Addr() string {
 	}
 	return sb.String()
 }
+func (ia *Ipv4Addr) Port() [2]byte {
+	return ia.port
+}
 func (ia *Ipv4Addr) String() string {
 	sb := strings.Builder{}
 	for i := 0; i < len(ia.addr); i++ {

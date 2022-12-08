@@ -1,15 +1,19 @@
-package user
+package socks
 
 import (
 	"context"
 	"fmt"
+	"github.com/rayguo17/go-socks/cmd/config"
+	"github.com/rayguo17/go-socks/manager/common"
 	"github.com/rayguo17/go-socks/util"
 	"io"
 	"log"
 	"net"
+	"strconv"
 	"time"
 )
 
+//how to organize program. how to abstract code.
 const (
 	RUNNING int = 1
 	DEAD    int = 2
@@ -56,7 +60,36 @@ func NewConExe(closeChan chan bool, conn net.Conn, addr util.Address, con *AcpCo
 }
 func (ce *ConnectExecutor) FormByte() []byte {
 	//proxy port should be able to configure
-	buf := []byte{5, 0, 0, 1, 127, 0, 0, 1, 13, 88}
+	portNum := config.SystemConfig.SocksPort
+	portString := strconv.FormatInt(int64(portNum), 16)
+	strArr := make([]string, 0)
+
+	for i := len(portString) - 1; i >= 0; i-- {
+		if (len(portString)-i)%2 == 0 {
+
+			strArr = append(strArr, portString[i:i+2])
+		}
+	}
+
+	if len(portString)%2 == 1 {
+		strArr = append(strArr, portString[0:1])
+	}
+	byteArr := make([]byte, 0, len(strArr))
+	for i := len(strArr) - 1; i >= 0; i-- {
+		num, _ := strconv.Atoi(strArr[i])
+		byteArr = append(byteArr, byte(num))
+
+	}
+	var first byte = 0
+	var second byte = 0
+	if len(byteArr) > 1 {
+		first = byteArr[0]
+		second = byteArr[1]
+	} else {
+		second = byteArr[0]
+	}
+	//pp.Println(byteArr)
+	buf := []byte{5, 0, 0, 1, 127, 0, 0, 1, first, second} //port number
 	return buf
 }
 func (ce *ConnectExecutor) Start() error {
@@ -85,7 +118,7 @@ func (ce *ConnectExecutor) Close() {
 
 //only calculate traffic at the end?
 func (ce *ConnectExecutor) uploadRoutine(cancelFunc context.CancelFunc) {
-	written, err := io.Copy(ce.acpCon.conn, ce.targetCon)
+	written, err := io.Copy(ce.acpCon.GetConn(), ce.targetCon)
 	if err != nil {
 		//log.Print("upload routine err ")
 		//log.Println(err)
@@ -101,7 +134,7 @@ func (ce *ConnectExecutor) uploadRoutine(cancelFunc context.CancelFunc) {
 	cancelFunc()
 }
 func (ce *ConnectExecutor) downloadRoutine(cancelFunc context.CancelFunc) {
-	written, err := io.Copy(ce.targetCon, ce.acpCon.conn)
+	written, err := io.Copy(ce.targetCon, ce.acpCon.GetConn())
 	if err != nil {
 		//log.Print("download routine err ")
 		//log.Println(err)
@@ -119,13 +152,13 @@ func (ce *ConnectExecutor) downloadRoutine(cancelFunc context.CancelFunc) {
 func (ce *ConnectExecutor) uploadTraffic(traffic int64, upload bool) chan *util.Response {
 	res := make(chan *util.Response)
 
-	wrap := &UploadTrafficWrap{
-		Username:   ce.acpCon.username,
-		up:         upload,
-		count:      traffic,
-		informChan: res,
+	wrap := &common.UploadTrafficWrap{
+		Username:   ce.acpCon.GetName(),
+		Up:         upload,
+		Count:      traffic,
+		InformChan: res,
 	}
-	go UM.UploadTraffic(wrap)
+	ce.acpCon.UploadTraffic(wrap)
 	return res
 }
 func (ce *ConnectExecutor) MainRoutine(ctx context.Context) {
