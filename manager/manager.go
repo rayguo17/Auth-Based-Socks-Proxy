@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/rayguo17/go-socks/manager/common"
-	"github.com/rayguo17/go-socks/manager/connection/socks"
+	"github.com/rayguo17/go-socks/manager/connection"
 	"github.com/rayguo17/go-socks/manager/user"
 	"github.com/rayguo17/go-socks/util"
 	"github.com/rayguo17/go-socks/util/logger"
@@ -21,11 +21,11 @@ type Manager struct {
 	GetUserChannel        chan *GetAllUserWrap
 	AddUserChannel        chan *common.UserWrap
 	DelUserChannel        chan *common.NameWrap
-	CmdChannel            chan string                         //for read write
-	AcpConnections        map[string]map[string]*socks.AcpCon //hash map, each manager have a acp connections list.
+	CmdChannel            chan string                              //for read write
+	AcpConnections        map[string]map[string]*connection.AcpCon //hash map, each manager have a acp connections list.
 	PrintUserChannel      chan bool
-	AddConChannel         chan *socks.AcpCon  //after assertion need to notify, once notify done, can be continued.
-	DelConChannel         chan *common.DCWrap // use string to delete
+	AddConChannel         chan *connection.AcpCon //after assertion need to notify, once notify done, can be continued.
+	DelConChannel         chan *common.DCWrap     // use string to delete
 	ChangePwdChannel      chan *common.ChangePwdWrap
 	TrafficReqChannel     chan *common.TrafficReqWrap
 	RulesetModChannel     chan *common.RulesetModWrap
@@ -90,7 +90,7 @@ func (um *Manager) handlePrintConn() {
 	for username, acpMap := range um.AcpConnections {
 		for id, acp := range acpMap {
 
-			conn := util.NewConnection(id, username, acp.RemoteAddress(), socks.EXECSTATUS[acp.ExecutorStatus()], socks.ACPSTATUSMAP[acp.GetStatus()], socks.CMDMap[acp.GetCmdType()])
+			conn := util.NewConnection(id, username, acp.RemoteAddress(), connection.EXECSTATUS[acp.ExecutorStatus()], connection.ACPSTATUSMAP[acp.GetStatus()], connection.CMDMap[acp.GetCmdType()])
 			cp.AddCon(conn)
 		}
 	}
@@ -225,10 +225,10 @@ func (um *Manager) removeNthUser(i int) {
 func (um *Manager) ListConn() {
 	um.PrintConnChannel <- true
 }
-func (um *Manager) AddCon(con *socks.AcpCon) {
+func (um *Manager) AddCon(con *connection.AcpCon) {
 	um.AddConChannel <- con
 }
-func (um *Manager) handleAddCon(acpCon *socks.AcpCon) {
+func (um *Manager) handleAddCon(acpCon *connection.AcpCon) {
 	_, user, err := um.findUserByName(acpCon.GetName())
 	if err != nil {
 		logger.Access.Println(acpCon.Log() + " rejected manager does not exist")
@@ -245,9 +245,11 @@ func (um *Manager) handleAddCon(acpCon *socks.AcpCon) {
 		acpCon.AuthChan <- false
 		return
 	}
-	acpCon.SetOwner(user)
+	if user.IsRemote() {
+
+	}
 	if _, ok := um.AcpConnections[user.GetName()]; !ok {
-		um.AcpConnections[user.GetName()] = make(map[string]*socks.AcpCon, 0)
+		um.AcpConnections[user.GetName()] = make(map[string]*connection.AcpCon, 0)
 	}
 	um.AcpConnections[user.GetName()][acpCon.GetID()] = acpCon
 	um.ActiveConnectionCount += 1
@@ -294,10 +296,10 @@ func (um *Manager) Initialize(path string) error {
 	UM.PrintConnChannel = make(chan bool)
 	UM.PrintUserChannel = make(chan bool)
 
-	UM.AddConChannel = make(chan *socks.AcpCon)
+	UM.AddConChannel = make(chan *connection.AcpCon)
 	UM.DelConChannel = make(chan *common.DCWrap)
 	UM.CmdChannel = make(chan string)
-	UM.AcpConnections = make(map[string]map[string]*socks.AcpCon)
+	UM.AcpConnections = make(map[string]map[string]*connection.AcpCon)
 	//pp.Println(UM)
 	return nil
 }

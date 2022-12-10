@@ -10,6 +10,13 @@ type Ipv4Addr struct {
 	port [2]byte
 }
 
+func Ipv4FromString(ip string, port string) *Ipv4Addr {
+
+}
+func parsePort(port string) [2]byte {
+
+}
+
 func NewIpv4Addr(ip []byte, port [2]byte) *Ipv4Addr {
 	return &Ipv4Addr{
 		addr: ip,

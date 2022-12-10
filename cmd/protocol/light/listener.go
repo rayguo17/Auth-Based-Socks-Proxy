@@ -5,6 +5,7 @@ import (
 	"github.com/k0kubun/pp/v3"
 	"github.com/rayguo17/go-socks/cmd/config"
 	"github.com/rayguo17/go-socks/util/logger"
+	"github.com/rayguo17/go-socks/util/protocol/light"
 	"net"
 )
 
@@ -34,11 +35,12 @@ func acceptHandler(conn net.Conn) {
 		logger.Debug.Println(err)
 		return
 	}
-	ar, err := BuildAR(authBuf[:authLen])
+	ar, err := light.BuildAR(authBuf[:authLen])
 	if err != nil {
 		logger.Debug.Println(err)
 		return
 	}
-	acpCon, err := Authentication(ar)
+	acpCon, err := Authentication(ar, conn)
 	pp.Println(acpCon)
+
 }

@@ -2,7 +2,11 @@ package light
 
 import (
 	"errors"
-	"github.com/rayguo17/go-socks/manager/connection/socks"
+	"github.com/rayguo17/go-socks/manager"
+	"github.com/rayguo17/go-socks/manager/connection"
+	"github.com/rayguo17/go-socks/util/protocol/light"
+	"net"
+	"time"
 )
 
 // 1.req auth to username:password
@@ -13,31 +17,20 @@ import (
 //   1      1
 //          0/1 success/fail
 
-type AuthReq struct {
-	Ulen   uint8
-	Uname  []byte
-	Plen   uint8
-	Passwd []byte
-}
-
-func BuildAR(buf []byte) (*AuthReq, error) {
-	//check if ulen and plen match
-	size := len(buf)
-	ulen := int(buf[0])
-	plen := int(buf[1+ulen])
-	if size != ulen+plen+2 {
-		return nil, errors.New("ulen+plen not match with buf size")
+func Authentication(ar *light.AuthReq, conn net.Conn) (*connection.AcpCon, error) {
+	id := conn.RemoteAddr().String()
+	username := string(ar.Uname)
+	passwd := string(ar.Passwd)
+	comm := manager.UM.GetConCommunicator()
+	acpCon := connection.NewCon(id, conn, username, passwd, comm)
+	manager.UM.AddCon(&acpCon)
+	select {
+	case authStatus := <-acpCon.AuthChan:
+		if !authStatus {
+			return nil, errors.New("authentication failed auth info incorrect")
+		}
+	case <-time.After(time.Second * 5):
+		return nil, errors.New("Authenticate manager timeout")
 	}
-	res := &AuthReq{
-		Ulen:   buf[0],
-		Plen:   buf[1+ulen],
-		Uname:  buf[1 : 1+ulen],
-		Passwd: buf[1+ulen:],
-	}
-	return res, nil
-}
-
-func Authentication(ar *AuthReq) (*socks.AcpCon, error) {
-
-	return nil, nil
+	return &acpCon, nil
 }

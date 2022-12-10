@@ -3,8 +3,9 @@ package socks
 import (
 	"context"
 	"github.com/rayguo17/go-socks/cmd/config"
-	"github.com/rayguo17/go-socks/manager/connection/socks"
+	"github.com/rayguo17/go-socks/manager/connection"
 	"github.com/rayguo17/go-socks/util/logger"
+	"github.com/rayguo17/go-socks/util/protocol/socks"
 	"net"
 )
 
@@ -37,16 +38,16 @@ func acceptHandler(conn net.Conn) {
 		return
 	}
 	//fmt.Printf("%d bytes received!\n", initLen)
-	source, err := FromByte(buf[:initLen], HandShakeRequest)
+	source, err := socks.FromByte(buf[:initLen], socks.HandShakeRequest)
 	if err != nil {
 		logger.Debug.Println(err)
 		return
 	}
-	if _, ok := source.(*HandshakeReq); !ok {
+	if _, ok := source.(*socks.HandshakeReq); !ok {
 		logger.Debug.Println("socks handshake mapping failed returning")
 		return
 	}
-	handShakeReq := source.(*HandshakeReq)
+	handShakeReq := source.(*socks.HandshakeReq)
 	//loop over choose which one to support
 	chosenAuthMethod := 0
 	for i := 0; i < len(handShakeReq.AuthMethod); i++ {
@@ -77,7 +78,7 @@ func acceptHandler(conn net.Conn) {
 		}
 	}
 	//3. authentication phase (skip for now)
-	var acpCon *socks.AcpCon
+	var acpCon *connection.AcpCon
 	if chosenAuthMethod == 2 {
 		authBuf := make([]byte, 512)
 		authLen, err := conn.Read(authBuf)
@@ -87,16 +88,16 @@ func acceptHandler(conn net.Conn) {
 		}
 		//register tmp to received feedback.
 
-		source, err = FromByte(authBuf[:authLen], AuthRequest)
+		source, err = socks.FromByte(authBuf[:authLen], socks.AuthRequest)
 		if err != nil {
 			logger.Debug.Println(err)
 			return
 		}
-		if _, ok := source.(*AuthReq); !ok {
+		if _, ok := source.(*socks.AuthReq); !ok {
 			logger.Debug.Println("socks authReq mapping failed returning")
 			return
 		}
-		authReq := source.(*AuthReq)
+		authReq := source.(*socks.AuthReq)
 		acpCon, err = Authenticate(authReq, conn)
 		if err != nil {
 			logger.Debug.Println(err)
@@ -126,16 +127,16 @@ func acceptHandler(conn net.Conn) {
 		logger.Debug.Println(err)
 		return
 	}
-	source, err = FromByte(cmdBuf[:cmdLen], ClientCommand)
+	source, err = socks.FromByte(cmdBuf[:cmdLen], socks.ClientCommand)
 	if err != nil {
 		logger.Debug.Println(err)
 		return
 	}
-	if _, ok := source.(*ClientCmd); !ok {
+	if _, ok := source.(*socks.ClientCmd); !ok {
 		logger.Debug.Println("socks authReq mapping failed returning")
 		return
 	}
-	clientCmd := source.(*ClientCmd)
+	clientCmd := source.(*socks.ClientCmd)
 	//pp.Println(clientCmd)
 	//commandHandle -> handleConnect -> con.ConnectCmd
 	//fmt.Println("going to handle command")
@@ -149,7 +150,7 @@ func acceptHandler(conn net.Conn) {
 		return
 	}
 	//fmt.Println("Command handle success")
-	cmdResp, err := ConstructResp(acpCon, ServerResponse)
+	cmdResp, err := ConstructResp(acpCon, socks.ServerResponse)
 	if err != nil {
 		logger.Debug.Println(err)
 		return

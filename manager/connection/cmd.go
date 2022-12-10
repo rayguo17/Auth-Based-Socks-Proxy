@@ -1,4 +1,4 @@
-package socks
+package connection
 
 type Cmd interface {
 	Start() error //start executor

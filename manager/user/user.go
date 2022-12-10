@@ -1,6 +1,7 @@
 package user
 
 import (
+	"github.com/rayguo17/go-socks/util/logger"
 	"strconv"
 	"time"
 )
@@ -27,6 +28,20 @@ type Access struct {
 	Black     bool     `json:"black"`
 	BlackList []string `json:"black_list"` //support ipv4/ipv6/domain need to identify different. when matching with DstAddr, should handle carefully.
 	WhiteList []string `json:"white_list"`
+}
+
+func (u *User) IsRemote() bool {
+	if u.route.Type == "" {
+		return false
+	}
+	if u.route.Type == "Direct" {
+		return false
+	}
+	if u.route.Type == "Remote" {
+		return true
+	}
+	logger.Debug.Println("is remote status unrecognized, using default")
+	return false
 }
 
 func (u *User) GetActCon() string {

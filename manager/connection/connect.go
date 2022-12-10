@@ -1,4 +1,4 @@
-package socks
+package connection
 
 import (
 	"context"
