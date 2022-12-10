@@ -9,7 +9,6 @@ import (
 	"io"
 	"log"
 	"net"
-	"strconv"
 	"time"
 )
 
@@ -28,32 +27,35 @@ var EXECSTATUS = map[int]string{
 }
 
 type ConnectExecutor struct {
-	targetCon net.Conn
-	readChan  chan []byte
-	writeChan chan []byte
-
+	targetCon        net.Conn
+	readChan         chan []byte
+	writeChan        chan []byte
 	acpCon           *AcpCon
+	isRemote         bool
+	RemoteAddr       util.Address
 	chanClosedParent chan bool //acpCon inform executor to close routine
 	toCloseChan      chan bool
 	status           int
-	addr             util.Address
+	DstAddr          util.Address
 }
 
 func (ce *ConnectExecutor) Status() int {
 	return ce.status //should put it inside routine
 }
 func (ce *ConnectExecutor) RemoteAddress() string {
-	return ce.addr.String()
+	return ce.DstAddr.String()
 }
 
-func NewConExe(closeChan chan bool, conn net.Conn, addr util.Address, con *AcpCon) *ConnectExecutor {
+func NewConExe(closeChan chan bool, isRemote bool, RemoteAddr util.Address, conn net.Conn, DstAddr util.Address, con *AcpCon) *ConnectExecutor {
 	return &ConnectExecutor{
 		chanClosedParent: closeChan,
 		readChan:         make(chan []byte),
 		writeChan:        make(chan []byte),
 		targetCon:        conn,
+		isRemote:         isRemote,
+		RemoteAddr:       RemoteAddr,
 		status:           DEAD,
-		addr:             addr,
+		DstAddr:          DstAddr,
 		toCloseChan:      make(chan bool),
 		acpCon:           con,
 	}
@@ -61,35 +63,9 @@ func NewConExe(closeChan chan bool, conn net.Conn, addr util.Address, con *AcpCo
 func (ce *ConnectExecutor) FormByte() []byte {
 	//proxy port should be able to configure
 	portNum := config.SystemConfig.SocksPort
-	portString := strconv.FormatInt(int64(portNum), 16)
-	strArr := make([]string, 0)
-
-	for i := len(portString) - 1; i >= 0; i-- {
-		if (len(portString)-i)%2 == 0 {
-
-			strArr = append(strArr, portString[i:i+2])
-		}
-	}
-
-	if len(portString)%2 == 1 {
-		strArr = append(strArr, portString[0:1])
-	}
-	byteArr := make([]byte, 0, len(strArr))
-	for i := len(strArr) - 1; i >= 0; i-- {
-		num, _ := strconv.Atoi(strArr[i])
-		byteArr = append(byteArr, byte(num))
-
-	}
-	var first byte = 0
-	var second byte = 0
-	if len(byteArr) > 1 {
-		first = byteArr[0]
-		second = byteArr[1]
-	} else {
-		second = byteArr[0]
-	}
+	portByte := util.DecToByte(portNum)
 	//pp.Println(byteArr)
-	buf := []byte{5, 0, 0, 1, 127, 0, 0, 1, first, second} //port number
+	buf := []byte{5, 0, 0, 1, 127, 0, 0, 1, portByte[0], portByte[1]} //port number
 	return buf
 }
 func (ce *ConnectExecutor) Start() error {

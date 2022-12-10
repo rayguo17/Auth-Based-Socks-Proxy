@@ -246,7 +246,12 @@ func (um *Manager) handleAddCon(acpCon *connection.AcpCon) {
 		return
 	}
 	if user.IsRemote() {
-
+		addr, err := user.GetRemote()
+		if err != nil {
+			acpCon.SetRemote(false, nil)
+		} else {
+			acpCon.SetRemote(true, addr)
+		}
 	}
 	if _, ok := um.AcpConnections[user.GetName()]; !ok {
 		um.AcpConnections[user.GetName()] = make(map[string]*connection.AcpCon, 0)

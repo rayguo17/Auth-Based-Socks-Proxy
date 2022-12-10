@@ -10,6 +10,10 @@ type DomainAddr struct {
 	port [2]byte
 }
 
+func (da *DomainAddr) AddrType() string {
+	return DomainAddress
+}
+
 func NewDomainAddr(ip []byte, port [2]byte) *DomainAddr {
 	return &DomainAddr{
 		addr: ip,
@@ -20,6 +24,9 @@ func (da *DomainAddr) Addr() string {
 	sb := strings.Builder{}
 	sb.Write(da.addr)
 	return sb.String()
+}
+func (da *DomainAddr) AddrByte() []byte {
+	return da.addr
 }
 func (da *DomainAddr) Port() [2]byte {
 	return da.port

@@ -10,11 +10,41 @@ type Ipv4Addr struct {
 	port [2]byte
 }
 
-func Ipv4FromString(ip string, port string) *Ipv4Addr {
+func Ipv4FromString(ip string, port string) (*Ipv4Addr, error) {
+	portNums, err := ParsePort(port)
+	if err != nil {
+		return nil, err
+	}
+	ipArr := strings.Split(ip, ".")
+	ipByte := make([]byte, 0, 4)
+	for i := 0; i < len(ipArr); i++ {
+		num, err := strconv.Atoi(ipArr[i])
+		if err != nil {
+			return nil, err
+		}
+		ipByte = append(ipByte, byte(num))
+	}
+	return &Ipv4Addr{
+		addr: ipByte,
+		port: portNums,
+	}, nil
+}
+func (ia *Ipv4Addr) AddrType() string {
+	return Ipv4Address
+}
+func DecToByte(port int) [2]byte {
+
+	first := port / 256
+	second := port % 256
+	return [2]byte{byte(first), byte(second)}
 
 }
-func parsePort(port string) [2]byte {
-
+func ParsePort(port string) ([2]byte, error) {
+	portNum, err := strconv.Atoi(port)
+	if err != nil {
+		return [2]byte{}, err
+	}
+	return DecToByte(portNum), nil
 }
 
 func NewIpv4Addr(ip []byte, port [2]byte) *Ipv4Addr {
@@ -32,6 +62,9 @@ func (ia *Ipv4Addr) Addr() string {
 		}
 	}
 	return sb.String()
+}
+func (ia *Ipv4Addr) AddrByte() []byte {
+	return ia.addr
 }
 func (ia *Ipv4Addr) Port() [2]byte {
 	return ia.port

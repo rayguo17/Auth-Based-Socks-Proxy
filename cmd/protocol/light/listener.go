@@ -2,7 +2,6 @@ package light
 
 import (
 	"context"
-	"github.com/k0kubun/pp/v3"
 	"github.com/rayguo17/go-socks/cmd/config"
 	"github.com/rayguo17/go-socks/util/logger"
 	"github.com/rayguo17/go-socks/util/protocol/light"
@@ -40,7 +39,50 @@ func acceptHandler(conn net.Conn) {
 		logger.Debug.Println(err)
 		return
 	}
+	//pp.Println(ar)
 	acpCon, err := Authentication(ar, conn)
-	pp.Println(acpCon)
 
+	//pp.Println(acpCon)
+	if err != nil {
+		logger.Debug.Println(err)
+		_, err = conn.Write([]byte{1})
+		if err != nil {
+			logger.Debug.Println(err)
+			return
+		}
+		return
+	}
+	defer acpCon.ProtocolClose()
+	_, err = conn.Write([]byte{0})
+	if err != nil {
+		logger.Debug.Println(err)
+		return
+	}
+	cmdBuf := make([]byte, 100)
+	cmdLen, err := conn.Read(cmdBuf)
+	if err != nil {
+		logger.Debug.Println(err)
+		conn.Write([]byte{1})
+		return
+	}
+	cmd, err := light.BuildCmd(cmdBuf[:cmdLen])
+	err = ConnectHandle(cmd, acpCon)
+	if err != nil {
+		logger.Debug.Println(err)
+		_, err = conn.Write([]byte{1})
+		//construct fail message as well
+		//depends on err reply message (rule set)
+		return
+	}
+	_, err = conn.Write([]byte{0})
+	if err != nil {
+		logger.Debug.Println(err)
+		return
+	}
+	err = acpCon.ExecuteBegin()
+	if err != nil {
+		logger.Debug.Println(err)
+		return
+	}
+	return
 }

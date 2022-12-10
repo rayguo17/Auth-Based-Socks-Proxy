@@ -1,8 +1,10 @@
 package user
 
 import (
+	"github.com/rayguo17/go-socks/util"
 	"github.com/rayguo17/go-socks/util/logger"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -18,7 +20,7 @@ type User struct {
 	Access          Access `json:"access"`
 	ActiveConn      int
 	TotalConn       int
-	route           Route `json:"route"`
+	Route           Route `json:"Route"`
 }
 type Route struct {
 	Type   string `json:"type"`   // Direct | Remote
@@ -31,17 +33,24 @@ type Access struct {
 }
 
 func (u *User) IsRemote() bool {
-	if u.route.Type == "" {
+	if u.Route.Type == "" {
 		return false
 	}
-	if u.route.Type == "Direct" {
+	if u.Route.Type == "Direct" {
 		return false
 	}
-	if u.route.Type == "Remote" {
+	if u.Route.Type == "Remote" {
 		return true
 	}
 	logger.Debug.Println("is remote status unrecognized, using default")
 	return false
+}
+func (u *User) GetRemote() (util.Address, error) {
+	//should support domanin name
+	remoteArr := strings.Split(u.Route.Remote, ":")
+
+	return util.Ipv4FromString(remoteArr[0], remoteArr[1])
+
 }
 
 func (u *User) GetActCon() string {

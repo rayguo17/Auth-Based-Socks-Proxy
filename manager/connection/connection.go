@@ -10,6 +10,7 @@ import (
 	"github.com/rayguo17/go-socks/manager/common"
 	"github.com/rayguo17/go-socks/util"
 	"github.com/rayguo17/go-socks/util/logger"
+	"github.com/rayguo17/go-socks/util/protocol/light"
 	"log"
 	"net"
 	"time"
@@ -84,6 +85,7 @@ func NewCon(id string, conn net.Conn, username string, passwd string, comm *comm
 		passwd:      passwd,
 		status:      AuthDone,
 		communicate: comm,
+		isRemote:    false,
 	}
 }
 
@@ -196,14 +198,47 @@ func (acpCon *AcpCon) ConnectCmd(addr util.Address) error {
 		return errors.New("check ruleset timeout")
 	}
 	str := addr.String()
-	conn, err := net.DialTimeout("tcp", str, time.Second*10)
-	if err != nil {
-		return err
+	var targetConn net.Conn
+	//vary
+	if acpCon.isRemote {
+		//authenticate and dial...
+		conn, err := net.DialTimeout("tcp", acpCon.remoteAddr.String(), time.Second*10)
+		if err != nil {
+			return err
+		}
+		arMsg := light.FormAR(acpCon.GetName(), acpCon.GetPasswd())
+		_, err = conn.Write(arMsg)
+		authBuf := make([]byte, 10)
+		_, err = conn.Read(authBuf)
+		if err != nil {
+			return err
+		}
+		if authBuf[0] != 0 {
+			return errors.New("Remote auth fail")
+		}
+		cmMsg := light.FormCmd(addr)
+		_, err = conn.Write(cmMsg)
+		cmdBuf := make([]byte, 10)
+		_, err = conn.Read(cmdBuf)
+		if err != nil {
+			return err
+		}
+		if authBuf[0] != 0 {
+			return errors.New("Remote command execute fail")
+		}
+		targetConn = conn
+	} else {
+		conn, err := net.DialTimeout("tcp", str, time.Second*10)
+		if err != nil {
+			return err
+		}
+		targetConn = conn
 	}
+
 	//success, create executor
 	acpCon.cmdClosedChan = make(chan bool)
 
-	connectExe := NewConExe(acpCon.cmdClosedChan, conn, addr, acpCon)
+	connectExe := NewConExe(acpCon.cmdClosedChan, acpCon.isRemote, acpCon.remoteAddr, targetConn, addr, acpCon)
 	acpCon.cmdExecutor = connectExe
 	logger.Access.Println(acpCon.Log() + " accepted")
 	//fmt.Println("command execute")

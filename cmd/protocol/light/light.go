@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/rayguo17/go-socks/manager"
 	"github.com/rayguo17/go-socks/manager/connection"
+	"github.com/rayguo17/go-socks/util"
 	"github.com/rayguo17/go-socks/util/protocol/light"
 	"net"
 	"time"
@@ -22,6 +23,7 @@ func Authentication(ar *light.AuthReq, conn net.Conn) (*connection.AcpCon, error
 	username := string(ar.Uname)
 	passwd := string(ar.Passwd)
 	comm := manager.UM.GetConCommunicator()
+	//fmt.Println(username, passwd)
 	acpCon := connection.NewCon(id, conn, username, passwd, comm)
 	manager.UM.AddCon(&acpCon)
 	select {
@@ -33,4 +35,17 @@ func Authentication(ar *light.AuthReq, conn net.Conn) (*connection.AcpCon, error
 		return nil, errors.New("Authenticate manager timeout")
 	}
 	return &acpCon, nil
+}
+
+func ConnectHandle(cmd *light.Cmd, con *connection.AcpCon) error {
+	var addr util.Address
+	switch int(cmd.AddrType) {
+	case light.IPV4Address:
+		addr = util.NewIpv4Addr(cmd.DstAddr, cmd.DstPort)
+	case light.Domain:
+		addr = util.NewDomainAddr(cmd.DstAddr, cmd.DstPort)
+	default:
+		return errors.New("addr type not supported")
+	}
+	return con.ConnectCmd(addr)
 }
