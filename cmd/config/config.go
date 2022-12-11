@@ -2,10 +2,12 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"strconv"
 )
 
+//should be able to choose to use encryption or not...
 type System struct {
 	SocksPort   int         `json:"socks_port"`
 	LightConfig LightConfig `json:"light_config"`
@@ -17,9 +19,11 @@ type LogConfig struct {
 	Access string `json:"access"`
 }
 type LightConfig struct {
-	PrivateKey string `json:"private_key"`
-	NodeID     string `json:"node_id"`
-	Port       int    `json:"port"`
+	PrivateKeyFile string `json:"private_key_file"`
+	PublicKeyFile  string `json:"public_key_file"`
+	NodeID         string `json:"node_id"`
+	Port           int    `json:"port"`
+	PrivateKey     string
 }
 
 func (s *System) GetLightPort() string {
@@ -51,5 +55,9 @@ func Initialize(path string) (*System, error) {
 	if err != nil {
 		return nil, err
 	}
+	if SystemConfig.LightConfig.PrivateKeyFile == "" || SystemConfig.LightConfig.PublicKeyFile == "" {
+		return nil, errors.New("private key file path should not be null")
+	}
+
 	return &SystemConfig, nil
 }

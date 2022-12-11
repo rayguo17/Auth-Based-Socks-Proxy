@@ -20,7 +20,7 @@
     "enable": true,
     "route": {
       "type": "Remote",
-      "remote": "127.0.0.1:20809",
+      "remote": "18.167.121.101:20809",
       "public_key": "3d92815f18a1cdf9911dfb0ba49c2586927e61962e94fb19a3a630cc10ba0528",
       "node_id": "A868303126987902D51F2B6F06DD90038C45B119"
     },
@@ -40,6 +40,12 @@
       "black": true,
       "black_list": [],
       "white_list": []
+    },
+    "route": {
+      "type": "Remote",
+      "remote": "43.198.22.219:20809",
+      "public_key": "3d92815f18a1cdf9911dfb0ba49c2586927e61962e94fb19a3a630cc10ba0528",
+      "node_id": "A868303126987902D51F2B6F06DD90038C45B119"
     }
   }
 ]

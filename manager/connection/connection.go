@@ -223,7 +223,12 @@ func (acpCon *AcpCon) ConnectCmd(addr util.Address) error {
 			return err
 		}
 		conn, err := f.Dial("tcp", acpCon.GetRemoteLightAddr().String(), dialFn, args)
+
 		//conn, err := net.DialTimeout("tcp", acpCon.GetRemoteLightAddr().String(), time.Second*10)
+		if err != nil {
+			return err
+		}
+		conn.SetReadDeadline(time.Now().Add(time.Second * 20))
 		if err != nil {
 			return err
 		}
@@ -231,6 +236,7 @@ func (acpCon *AcpCon) ConnectCmd(addr util.Address) error {
 		_, err = conn.Write(arMsg)
 		authBuf := make([]byte, 10)
 		_, err = conn.Read(authBuf)
+
 		if err != nil {
 			return err
 		}
@@ -262,6 +268,7 @@ func (acpCon *AcpCon) ConnectCmd(addr util.Address) error {
 	connectExe := NewConExe(acpCon.cmdClosedChan, acpCon.isRemote, acpCon.GetRemoteLightAddr(), targetConn, addr, acpCon)
 	acpCon.cmdExecutor = connectExe
 	logger.Access.Println(acpCon.Log() + " accepted")
+	targetConn.SetReadDeadline(time.Time{})
 	//fmt.Println("command execute")
 	return nil
 }
