@@ -10,4 +10,4 @@
 #  <PORT>        - The TCP/IP port of your obfs4 bridge.
 #  <FINGERPRINT> - The bridge's fingerprint.
 
-Bridge obfs4 <IP ADDRESS>:<PORT> <FINGERPRINT> cert=AHe8unJE2z5qXtJ0boYXAGZoSIeaJx8I69sO9kdSUeUXDd7yL7lJXD/HDwCNtOJg/hfrcw iat-mode=0
+Bridge obfs4 <IP ADDRESS>:<PORT> <FINGERPRINT> cert=qGgwMSaYeQLVHytvBt2QA4xFsRk9koFfGKHN+ZEd+wuknCWGkn5hli6U+xmjpjDMELoFKA iat-mode=0

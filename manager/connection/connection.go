@@ -7,10 +7,14 @@ package connection
 import (
 	"errors"
 	"fmt"
+	pt "git.torproject.org/pluggable-transports/goptlib.git"
 	"github.com/rayguo17/go-socks/manager/common"
+	"github.com/rayguo17/go-socks/manager/share"
 	"github.com/rayguo17/go-socks/util"
 	"github.com/rayguo17/go-socks/util/logger"
 	"github.com/rayguo17/go-socks/util/protocol/light"
+	"gitlab.com/yawning/obfs4.git/transports/obfs4"
+	"golang.org/x/net/proxy"
 	"log"
 	"net"
 	"time"
@@ -62,16 +66,16 @@ type AcpCon struct {
 	cmdType       int
 	cmdClosedChan chan bool //tell cmd to close
 	isRemote      bool
-	remoteAddr    util.Address
+	lightConfig   *share.LightConfig
 	cmdExecutor   Cmd
 	status        int
 	//we can store UM's channel to communicate with it.
 	communicate *common.Communicator
 }
 
-func (acpCon *AcpCon) SetRemote(isRemote bool, remoteAddr util.Address) {
+func (acpCon *AcpCon) SetRemote(isRemote bool, config *share.LightConfig) {
 	acpCon.isRemote = isRemote
-	acpCon.remoteAddr = remoteAddr
+	acpCon.lightConfig = config
 }
 
 func NewCon(id string, conn net.Conn, username string, passwd string, comm *common.Communicator) AcpCon {
@@ -202,7 +206,24 @@ func (acpCon *AcpCon) ConnectCmd(addr util.Address) error {
 	//vary
 	if acpCon.isRemote {
 		//authenticate and dial...
-		conn, err := net.DialTimeout("tcp", acpCon.remoteAddr.String(), time.Second*10)
+		//use client shake handle
+		t := obfs4.Transport{}
+		f, err := t.ClientFactory("./")
+		if err != nil {
+			return err
+		}
+		ptArgs := &pt.Args{
+			"node-id":    []string{acpCon.lightConfig.NodeId},
+			"public-key": []string{acpCon.lightConfig.PublicKey},
+			"iat-mode":   []string{"0"},
+		}
+		dialFn := proxy.Direct.Dial
+		args, err := f.ParseArgs(ptArgs)
+		if err != nil {
+			return err
+		}
+		conn, err := f.Dial("tcp", acpCon.GetRemoteLightAddr().String(), dialFn, args)
+		//conn, err := net.DialTimeout("tcp", acpCon.GetRemoteLightAddr().String(), time.Second*10)
 		if err != nil {
 			return err
 		}
@@ -238,11 +259,18 @@ func (acpCon *AcpCon) ConnectCmd(addr util.Address) error {
 	//success, create executor
 	acpCon.cmdClosedChan = make(chan bool)
 
-	connectExe := NewConExe(acpCon.cmdClosedChan, acpCon.isRemote, acpCon.remoteAddr, targetConn, addr, acpCon)
+	connectExe := NewConExe(acpCon.cmdClosedChan, acpCon.isRemote, acpCon.GetRemoteLightAddr(), targetConn, addr, acpCon)
 	acpCon.cmdExecutor = connectExe
 	logger.Access.Println(acpCon.Log() + " accepted")
 	//fmt.Println("command execute")
 	return nil
+}
+func (acpCon *AcpCon) GetRemoteLightAddr() util.Address {
+	if !acpCon.isRemote {
+		return nil
+	} else {
+		return acpCon.lightConfig.RemoteAddr
+	}
 }
 func (acpCon *AcpCon) ExecuteBegin() error {
 	//should check everything before begin

@@ -25,7 +25,7 @@ func main() {
 	fmt.Println("Hello world")
 	system, err := config.Initialize(conf)
 	if err != nil {
-		logger.Debug.Println(err)
+		fmt.Println(err)
 		return
 	}
 	//pp.Println(system)

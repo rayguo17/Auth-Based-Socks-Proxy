@@ -65,7 +65,7 @@ func handleSocks(conn net.Conn) {
 	}
 	conn.Write([]byte{5, 0})
 	cmdBuf := make([]byte, 512)
-	cmdLen, err := conn.Read(cmdBuf)
+	_, err = conn.Read(cmdBuf)
 	//pp.Println(cmdBuf[:cmdLen])
 	//clientArgs
 	sockArgs := &pt.Args{
@@ -73,7 +73,7 @@ func handleSocks(conn net.Conn) {
 			"A868303126987902D51F2B6F06DD90038C45B119",
 		},
 		"public-key": []string{
-			"d97a9dcecc6ab9f22b1d8b081c51db9befe0e238d1209d87c41d62c269823643",
+			"3d92815f18a1cdf9911dfb0ba49c2586927e61962e94fb19a3a630cc10ba0528",
 		},
 		"iat-mode": []string{
 			"0",

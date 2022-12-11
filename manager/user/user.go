@@ -1,6 +1,8 @@
 package user
 
 import (
+	"errors"
+	"github.com/rayguo17/go-socks/manager/share"
 	"github.com/rayguo17/go-socks/util"
 	"github.com/rayguo17/go-socks/util/logger"
 	"strconv"
@@ -23,9 +25,12 @@ type User struct {
 	Route           Route `json:"Route"`
 }
 type Route struct {
-	Type   string `json:"type"`   // Direct | Remote
-	Remote string `json:"remote"` // ip:port
+	Type      string `json:"type"`   // Direct | Remote
+	Remote    string `json:"remote"` // ip:port
+	PublicKey string `json:"public_key"`
+	NodeID    string `json:"node_id"`
 }
+
 type Access struct {
 	Black     bool     `json:"black"`
 	BlackList []string `json:"black_list"` //support ipv4/ipv6/domain need to identify different. when matching with DstAddr, should handle carefully.
@@ -45,11 +50,17 @@ func (u *User) IsRemote() bool {
 	logger.Debug.Println("is remote status unrecognized, using default")
 	return false
 }
-func (u *User) GetRemote() (util.Address, error) {
+func (u *User) GetRemote() (*share.LightConfig, error) {
 	//should support domanin name
 	remoteArr := strings.Split(u.Route.Remote, ":")
-
-	return util.Ipv4FromString(remoteArr[0], remoteArr[1])
+	addr, err := util.Ipv4FromString(remoteArr[0], remoteArr[1])
+	if err != nil {
+		return nil, err
+	}
+	if u.Route.PublicKey == "" || u.Route.NodeID == "" {
+		return nil, errors.New("public key and route should not be empty default to direct")
+	}
+	return share.NewLightConfig(addr, u.Route.PublicKey, u.Route.NodeID), nil
 
 }
 

@@ -246,11 +246,11 @@ func (um *Manager) handleAddCon(acpCon *connection.AcpCon) {
 		return
 	}
 	if user.IsRemote() {
-		addr, err := user.GetRemote()
+		config, err := user.GetRemote()
 		if err != nil {
 			acpCon.SetRemote(false, nil)
 		} else {
-			acpCon.SetRemote(true, addr)
+			acpCon.SetRemote(true, config)
 		}
 	}
 	if _, ok := um.AcpConnections[user.GetName()]; !ok {

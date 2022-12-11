@@ -1,6 +1,10 @@
 {
   "socks_port": 5000,
-  "light_port": 20808,
+  "light_config": {
+    "private_key": "",
+    "node_id": "",
+    "port": 20808
+  },
   "log": {
     "debug": "STDOUT",
     "access": "STDOUT"

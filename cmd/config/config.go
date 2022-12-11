@@ -7,18 +7,24 @@ import (
 )
 
 type System struct {
-	SocksPort  int       `json:"socks_port"`
-	LightPort  int       `json:"light_port"`
-	Log        LogConfig `json:"log"`
-	UserConfig string    `json:"user_config"`
+	SocksPort   int         `json:"socks_port"`
+	LightConfig LightConfig `json:"light_config"`
+	Log         LogConfig   `json:"log"`
+	UserConfig  string      `json:"user_config"`
 }
 type LogConfig struct {
 	Debug  string `json:"debug"`
 	Access string `json:"access"`
 }
+type LightConfig struct {
+	PrivateKey string `json:"private_key"`
+	NodeID     string `json:"node_id"`
+	Port       int    `json:"port"`
+}
 
 func (s *System) GetLightPort() string {
-	return strconv.Itoa(s.LightPort)
+
+	return strconv.Itoa(s.LightConfig.Port)
 }
 
 var SystemConfig System

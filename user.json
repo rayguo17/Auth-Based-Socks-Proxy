@@ -20,7 +20,9 @@
     "enable": true,
     "route": {
       "type": "Remote",
-      "remote": "127.0.0.1:20809"
+      "remote": "127.0.0.1:20809",
+      "public_key": "3d92815f18a1cdf9911dfb0ba49c2586927e61962e94fb19a3a630cc10ba0528",
+      "node_id": "A868303126987902D51F2B6F06DD90038C45B119"
     },
     "access": {
       "black": true,
