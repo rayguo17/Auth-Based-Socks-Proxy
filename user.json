@@ -4,7 +4,10 @@
     "password": "",
     "enable": true,
     "route": {
-      "type": "Direct"
+      "type": "Remote",
+      "remote": "18.163.76.18:20808",
+      "public_key": "5e752a72e4e7cda3dc5d17ebfd4a262316b1af009b306e7cc9d2ee381a662035",
+      "node_id": "A868303126987902D51F2B6F06DD90038C45B119"
     },
     "access": {
       "black": true,
@@ -44,7 +47,7 @@
     "route": {
       "type": "Remote",
       "remote": "18.163.76.18:20808",
-      "public_key": "306f1b3781e2a5a411bea4369a95e3286afbdcd147cd1c3ea1f42482f9685155",
+      "public_key": "5e752a72e4e7cda3dc5d17ebfd4a262316b1af009b306e7cc9d2ee381a662035",
       "node_id": "A868303126987902D51F2B6F06DD90038C45B119"
     }
   }
