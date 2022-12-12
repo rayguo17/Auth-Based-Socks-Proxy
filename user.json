@@ -20,8 +20,8 @@
     "enable": true,
     "route": {
       "type": "Remote",
-      "remote": "18.167.121.101:20809",
-      "public_key": "3d92815f18a1cdf9911dfb0ba49c2586927e61962e94fb19a3a630cc10ba0528",
+      "remote": "127.0.0.1:20809",
+      "public_key": "3a54e32f035013882686df83d9a4e3f213b2612823b46ac60608e6e9a2d4606d",
       "node_id": "A868303126987902D51F2B6F06DD90038C45B119"
     },
     "access": {
@@ -43,8 +43,8 @@
     },
     "route": {
       "type": "Remote",
-      "remote": "43.198.22.219:20809",
-      "public_key": "3d92815f18a1cdf9911dfb0ba49c2586927e61962e94fb19a3a630cc10ba0528",
+      "remote": "18.163.76.18:20808",
+      "public_key": "306f1b3781e2a5a411bea4369a95e3286afbdcd147cd1c3ea1f42482f9685155",
       "node_id": "A868303126987902D51F2B6F06DD90038C45B119"
     }
   }

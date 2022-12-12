@@ -23,17 +23,20 @@ func Server(system *config.System) error {
 	prBlock, _ := pem.Decode(privPemByte)
 	key := prBlock.Bytes[len(prBlock.Bytes)-32:]
 	privKey, err := ntor.NewPublicKey(key)
+	//logger.Access.Printf("Server private key: %v\n", privKey.Hex())
 	if err != nil {
 		return err
 	}
 	system.LightConfig.PrivateKey = privKey.Hex()
-	pubPemByte, err := os.ReadFile(system.LightConfig.PrivateKeyFile)
+	//pp.Println(system)
+	pubPemByte, err := os.ReadFile(system.LightConfig.PublicKeyFile)
 	if err != nil {
 		return err
 	}
 	pbBlock, _ := pem.Decode(pubPemByte)
 	pubKeyByte := pbBlock.Bytes[len(pbBlock.Bytes)-32:]
 	pubKey, err := ntor.NewPublicKey(pubKeyByte)
+
 	if err != nil {
 		return err
 	}
