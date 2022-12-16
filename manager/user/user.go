@@ -114,6 +114,22 @@ func (u *User) GetBlack() string {
 	}
 	return "White"
 }
+func (u *User) GetEnable() string {
+	if u.Enable {
+		return "true"
+	}
+	return "false"
+}
+func (u *User) GetRoute() string {
+	switch u.Route.Type {
+	case "Direct":
+		return "Direct"
+	case "Remote":
+		return u.Route.Remote
+	default:
+		return "Direct"
+	}
+}
 
 func (u *User) GetLastSeen() string {
 	initTime := time.Time{}

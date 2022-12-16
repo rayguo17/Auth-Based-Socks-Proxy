@@ -28,6 +28,7 @@ func main() {
 		fmt.Println(err)
 		return
 	}
+	//setup frontend
 	//pp.Println(system)
 	err = setup.Server(system)
 	if err != nil {

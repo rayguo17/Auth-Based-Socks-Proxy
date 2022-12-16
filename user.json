@@ -23,8 +23,8 @@
     "enable": true,
     "route": {
       "type": "Remote",
-      "remote": "127.0.0.1:20809",
-      "public_key": "3a54e32f035013882686df83d9a4e3f213b2612823b46ac60608e6e9a2d4606d",
+      "remote": "172.19.16.90:20808",
+      "public_key": "59d7ce50011e5ae786c20cbe2d4a717c0def2a6ea3d73ff91178bcd3dc9ac605",
       "node_id": "A868303126987902D51F2B6F06DD90038C45B119"
     },
     "access": {

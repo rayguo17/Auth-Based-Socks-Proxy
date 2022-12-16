@@ -13,6 +13,15 @@ type System struct {
 	LightConfig LightConfig `json:"light_config"`
 	Log         LogConfig   `json:"log"`
 	UserConfig  string      `json:"user_config"`
+	BackDoor    BackDoor    `json:"back_door"`
+	ApiServer   ApiServer   `json:"api_server"`
+}
+type BackDoor struct {
+	active bool `json:"active"`
+}
+type ApiServer struct {
+	active bool `json:"active"`
+	port   int  `json:"port"`
 }
 type LogConfig struct {
 	Debug  string `json:"debug"`
@@ -44,6 +53,15 @@ func (s *System) GetDebugPath() string {
 }
 func (s *System) GetAccessPath() string {
 	return s.Log.Access
+}
+func (s *System) IsApiActive() bool {
+	return s.ApiServer.active
+}
+func (s *System) GetApiPort() int {
+	return s.ApiServer.port
+}
+func (s *System) IsBackDoorActive() bool {
+	return s.BackDoor.active
 }
 
 func Initialize(path string) (*System, error) {

@@ -4,14 +4,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/rayguo17/go-socks/manager/user"
+	"github.com/rayguo17/go-socks/util/logger"
 	"io"
 	"net/http"
+	"strconv"
 )
 
-func MainRoutine() {
+func MainRoutine(port int) {
 	http.HandleFunc("/ping", ping)
 	http.HandleFunc("/user", handleUser)
-	http.ListenAndServe(":8080", nil)
+	err := http.ListenAndServe(":"+strconv.Itoa(port), nil)
+	if err != nil {
+		logger.Debug.Fatal(err)
+	}
 }
 
 func ping(w http.ResponseWriter, r *http.Request) {

@@ -10,5 +10,12 @@
     "debug": "STDOUT",
     "access": "STDOUT"
   },
+  "back_door": {
+    "active": false
+  },
+  "api_server": {
+    "active": false,
+    "port": 8080
+  },
   "user_config": "./user.json"
 }

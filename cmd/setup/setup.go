@@ -53,9 +53,12 @@ func Server(system *config.System) error {
 	case <-time.After(time.Second * 5):
 		return errors.New("start manager manager timeout")
 	}
-	go api.MainRoutine()
-	go Backdoor.BackDoorRoutine()
-
+	if system.IsApiActive() {
+		go api.MainRoutine(system.GetApiPort())
+	}
+	if system.IsBackDoorActive() {
+		go Backdoor.BackDoorRoutine()
+	}
 	//setup logger...
 	return nil
 }

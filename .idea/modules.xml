@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/proxy.iml" filepath="$PROJECT_DIR$/.idea/proxy.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/Auth-Based-Socks-Proxy.iml" filepath="$PROJECT_DIR$/.idea/Auth-Based-Socks-Proxy.iml" />
     </modules>
   </component>
 </project>

@@ -9,9 +9,15 @@ import (
 //act as manager service... return light structure.
 
 type Display struct {
-	Username string
-	Black    string
-	LastSeen string
+	Username         string
+	UploadTraffic    string
+	DownloadTraffic  string
+	Enable           string
+	LastSeen         string
+	Route            string
+	ActiveConnection string
+	TotalConnection  string
+	Black            string
 }
 type GetAllUserWrap struct {
 	informChan chan []*Display
@@ -34,9 +40,15 @@ func (um *Manager) HandleGetAllUser(wrap *GetAllUserWrap) {
 	for _, user := range um.Users {
 
 		userConfig := &Display{
-			Username: user.GetName(),
-			LastSeen: user.GetLastSeen(),
-			Black:    user.GetBlack(),
+			Username:         user.GetName(),
+			UploadTraffic:    user.GetUpTraffic(),
+			DownloadTraffic:  user.GetDownTraffic(),
+			Enable:           user.GetEnable(),
+			Route:            user.GetRoute(),
+			LastSeen:         user.GetLastSeen(),
+			ActiveConnection: user.GetActCon(),
+			TotalConnection:  user.GetTotalCon(),
+			Black:            user.GetBlack(),
 		}
 		res = append(res, userConfig)
 	}
