@@ -5,15 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/rayguo17/go-socks/manager/common"
 	"github.com/rayguo17/go-socks/manager/connection"
 	"github.com/rayguo17/go-socks/manager/user"
 	"github.com/rayguo17/go-socks/util"
 	"github.com/rayguo17/go-socks/util/logger"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
-	"os"
-	"strings"
-	"time"
 )
 
 type Manager struct {
@@ -39,7 +40,6 @@ type Manager struct {
 }
 
 var UM Manager
-var filePath string = "./manager.json"
 
 func (um *Manager) ListUsers() {
 	um.PrintUserChannel <- true
@@ -128,7 +128,7 @@ func (um *Manager) handleCheckRuleset(wrap *common.CheckRulesetWrap) {
 		return
 	}
 	if user.Deleted || !user.Enable {
-		res := util.NewResponse(-1, "manager deleted or not enabled", nil)
+		res := util.NewResponse(-1, "user deleted or not enabled", nil)
 		wrap.InformChan <- res
 		return
 	}
@@ -212,7 +212,7 @@ func (um *Manager) handleDelCon(wrap *common.DCWrap) {
 			delete(user, idArr[1])
 			index, user, err := um.findUserByName(idArr[0])
 			if err != nil {
-				logger.Debug.Fatal("manager not found when deleting")
+				logger.Debug.Fatal("user not found when deleting")
 			}
 			user.SubActiveConn()
 			um.ActiveConnectionCount -= 1
@@ -225,7 +225,7 @@ func (um *Manager) handleDelCon(wrap *common.DCWrap) {
 			return
 		}
 	} else {
-		logger.Debug.Fatal("manager not found!")
+		logger.Debug.Fatal("user not found!")
 	}
 
 }
@@ -252,7 +252,7 @@ func (um *Manager) AddCon(con *connection.AcpCon) {
 func (um *Manager) handleAddCon(acpCon *connection.AcpCon) {
 	_, user, err := um.findUserByName(acpCon.GetName())
 	if err != nil {
-		logger.Access.Println(acpCon.Log() + " rejected manager does not exist")
+		logger.Access.Println(acpCon.Log() + " rejected user does not exist")
 		acpCon.AuthChan <- false
 		return
 	}
@@ -262,7 +262,7 @@ func (um *Manager) handleAddCon(acpCon *connection.AcpCon) {
 		return
 	}
 	if user.Deleted || !user.Enable {
-		logger.Access.Println(acpCon.Log() + " rejected manager deleted or not enabled")
+		logger.Access.Println(acpCon.Log() + " rejected user deleted or not enabled")
 		acpCon.AuthChan <- false
 		return
 	}
@@ -290,7 +290,7 @@ func (um *Manager) findUserByName(uname string) (int, *user.User, error) {
 			return i, um.Users[i], nil
 		}
 	}
-	return -1, nil, errors.New("manager not found")
+	return -1, nil, errors.New("user not found")
 }
 func (um *Manager) handleCommand(cmd string) {
 	fmt.Println("cmd received:", cmd)

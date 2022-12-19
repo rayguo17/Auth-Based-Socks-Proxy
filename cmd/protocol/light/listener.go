@@ -2,15 +2,15 @@ package light
 
 import (
 	"context"
-	"fmt"
+	"log"
+	"net"
+
 	pt "git.torproject.org/pluggable-transports/goptlib.git"
 	"github.com/rayguo17/go-socks/cmd/config"
 	"github.com/rayguo17/go-socks/util/logger"
 	"github.com/rayguo17/go-socks/util/protocol/light"
 	"gitlab.com/yawning/obfs4.git/common/drbg"
 	"gitlab.com/yawning/obfs4.git/transports/obfs4"
-	"log"
-	"net"
 )
 
 func ListenStart(system *config.System, cancelFunc context.CancelFunc) error {
@@ -58,8 +58,7 @@ func acceptHandler(conn net.Conn, lightConfig config.LightConfig) {
 		log.Printf("%s(%s) - handshake failed: %s", name, addrStr, err)
 		return
 	}
-	fmt.Println("Handshake success!")
-	
+	log.Printf("%s - handshake success", addrStr)
 	//start light authentication.
 	authBuf := make([]byte, 512)
 	authLen, err := remote.Read(authBuf)

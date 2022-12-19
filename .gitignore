@@ -3,6 +3,8 @@ x25519-pub.pem
 obfs4_bridgeline.txt
 obfs4_state.json
 user.json
+access.log
+debug.log
 .idea
 ./frontend/node_modules/
 /frontend/node_modules/
