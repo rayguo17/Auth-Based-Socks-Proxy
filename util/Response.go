@@ -7,6 +7,19 @@ type Response struct {
 	errMsg  string
 	data    []byte
 }
+type AppResponse struct {
+	errCode int
+	errMsg  string
+	data    interface{}
+}
+
+func NewAppResponse(c int, msg string, data interface{}) *AppResponse {
+	return &AppResponse{
+		errMsg:  msg,
+		errCode: c,
+		data:    data,
+	}
+}
 
 func NewResponse(c int, msg string, data []byte) *Response {
 	return &Response{
@@ -22,6 +35,15 @@ func (r *Response) GetErrCode() int {
 	return r.errCode
 }
 func (r *Response) GetErrMsg() string {
+	return r.errMsg
+}
+func (r *AppResponse) GetData() interface{} {
+	return r.data
+}
+func (r *AppResponse) GetErrCode() int {
+	return r.errCode
+}
+func (r *AppResponse) GetErrMsg() string {
 	return r.errMsg
 }
 func (r *Response) String() string {

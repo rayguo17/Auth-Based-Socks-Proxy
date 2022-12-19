@@ -70,3 +70,4 @@ We utilize channel to "register" commands. So that the command will be executed 
 6. showcase remote server connection, use wireshark to demostrate we obfuscate relayed traffic. showcase we now are able to circumvate firewall censoring.
 7. showcase backdoor monitoring, show active server and active user
 8. showcase http api server, use postman to interact with user.
+9. delete user, gracefully handle, mark as deleted, still keep the user, until all the connection is end. (detail)

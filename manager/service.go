@@ -9,9 +9,15 @@ import (
 //act as manager service... return light structure.
 
 type Display struct {
-	Username string
-	Black    string
-	LastSeen string
+	Username         string
+	UploadTraffic    string
+	DownloadTraffic  string
+	Enable           string
+	LastSeen         string
+	Route            string
+	ActiveConnection string
+	TotalConnection  string
+	Black            string
 }
 type GetAllUserWrap struct {
 	informChan chan []*Display
@@ -34,9 +40,15 @@ func (um *Manager) HandleGetAllUser(wrap *GetAllUserWrap) {
 	for _, user := range um.Users {
 
 		userConfig := &Display{
-			Username: user.GetName(),
-			LastSeen: user.GetLastSeen(),
-			Black:    user.GetBlack(),
+			Username:         user.GetName(),
+			UploadTraffic:    user.GetUpTraffic(),
+			DownloadTraffic:  user.GetDownTraffic(),
+			Enable:           user.GetEnable(),
+			Route:            user.GetRoute(),
+			LastSeen:         user.GetLastSeen(),
+			ActiveConnection: user.GetActCon(),
+			TotalConnection:  user.GetTotalCon(),
+			Black:            user.GetBlack(),
 		}
 		res = append(res, userConfig)
 	}
@@ -54,6 +66,7 @@ func (um *Manager) handleAddUser(wrap *common.UserWrap) {
 		wrap.InformChan <- res
 		return
 	}
+	wrap.User.SetEnable()
 	um.Users = append(um.Users, wrap.User)
 	userConfig := &Display{
 		Username: wrap.User.GetName(),
@@ -66,7 +79,7 @@ func (um *Manager) handleAddUser(wrap *common.UserWrap) {
 		wrap.InformChan <- res
 		return
 	}
-	res := util.NewResponse(0, "", data)
+	res := util.NewResponse(0, "success", data)
 	wrap.InformChan <- res
 	return
 }
@@ -84,6 +97,7 @@ func (um *Manager) handleDelUser(wrap *common.NameWrap) {
 		return
 	}
 	user.SetDeleted()
+	user.Enable = false
 	um.CheckDeletedUser(user, i)
 	wrap.InformChan <- util.NewResponse(0, "", nil)
 	return
