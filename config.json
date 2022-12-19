@@ -3,7 +3,7 @@
   "light_config": {
     "private_key_file": "./x25519-priv.pem",
     "public_key_file": "./x25519-pub.pem",
-    "node_id": "",
+    "node_id": "A868303126987902D51F2B6F06DD90038C45B119",
     "port": 20808
   },
   "log": {

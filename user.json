@@ -22,7 +22,7 @@
     "password": "123123",
     "enable": true,
     "route": {
-      "type": "Remote",
+      "type": "Direct",
       "remote": "127.0.0.1:20809",
       "public_key": "3a54e32f035013882686df83d9a4e3f213b2612823b46ac60608e6e9a2d4606d",
       "node_id": "A868303126987902D51F2B6F06DD90038C45B119"

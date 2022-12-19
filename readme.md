@@ -8,7 +8,14 @@ Yet Another Socks5 proxy Server. But we offer Authentication, Auditorium, Access
 
 ## Start
 
-`go build github.com/rayguo17/go-socks/cmd`
+```
+go build github.com/rayguo17/go-socks/cmd
+
+## In project root directory
+
+go run cmd/main.go ./config.json
+
+```
 
 ## Config
 
@@ -42,15 +49,16 @@ We utilize channel to "register" commands. So that the command will be executed 
 - [x] Use Browser to showcase blacklist/whitelist, and also the connection monitor.
 - [x] Showcase wrong behavior, when handling socks5 protocol.
 - [x] HTTP Server protocol handling...
+- [x] config file/ http handle
+- [x] User traffic byte count
+- [x] User log file.
+- [x] Integrate tor obfs4 traffic
 - [ ] Graceful shutdown.
 - [ ] Can choose remote encryption or pure traffic
 - [ ] should be able to choose port to open api server
 - [ ] fix http add, delete and list user.
 - [ ] fix backdoor monitoring, show remote connection and user property.
-- [x] config file/ http handle
-- [x] User traffic byte count
-- [x] User log file.
-- [x] Integrate tor obfs4 traffic
+- [ ] add tauri front end interface.
 
 ### Show Case
 
