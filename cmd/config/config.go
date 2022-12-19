@@ -22,11 +22,11 @@ type System struct {
 	ctx         context.Context
 }
 type BackDoor struct {
-	active bool `json:"active"`
+	Active bool `json:"active"`
 }
 type ApiServer struct {
-	active bool `json:"active"`
-	port   int  `json:"port"`
+	Active bool `json:"active"`
+	Port   int  `json:"port"`
 }
 type LogConfig struct {
 	Debug     string `json:"debug"`
@@ -74,13 +74,13 @@ func (s *System) GetAccessPath() string {
 	return s.Log.Access
 }
 func (s *System) IsApiActive() bool {
-	return s.ApiServer.active
+	return s.ApiServer.Active
 }
 func (s *System) GetApiPort() int {
-	return s.ApiServer.port
+	return s.ApiServer.Port
 }
 func (s *System) IsBackDoorActive() bool {
-	return s.BackDoor.active
+	return s.BackDoor.Active
 }
 
 func Initialize(path string) (*System, error) {

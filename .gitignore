@@ -1,6 +1,7 @@
 ./x25519-priv.pem
 ./x25519-pub.pem
-
+./obfs4_bridgeline.txt
+./obfs4_state.json
 ./user.json
 .idea
 ./frontend/node_modules/

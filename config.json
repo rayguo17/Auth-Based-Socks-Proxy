@@ -13,7 +13,7 @@
     "access": "STDOUT"
   },
   "back_door": {
-    "active": false
+    "active": true
   },
   "api_server": {
     "active": false,
