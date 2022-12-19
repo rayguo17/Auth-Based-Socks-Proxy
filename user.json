@@ -22,8 +22,8 @@
     "password": "123123",
     "enable": true,
     "route": {
-      "type": "Remote",
-      "remote": "172.19.16.90:20808",
+      "type": "Direct",
+      "remote": "172.12.169.50:20808",
       "public_key": "59d7ce50011e5ae786c20cbe2d4a717c0def2a6ea3d73ff91178bcd3dc9ac605",
       "node_id": "A868303126987902D51F2B6F06DD90038C45B119"
     },

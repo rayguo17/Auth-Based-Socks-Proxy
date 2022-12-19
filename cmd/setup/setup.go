@@ -9,13 +9,36 @@ import (
 	"github.com/rayguo17/go-socks/manager"
 	"github.com/rayguo17/go-socks/util/logger"
 	"gitlab.com/yawning/obfs4.git/common/ntor"
+	"log"
 	"os"
 	"time"
 )
 
 func Server(system *config.System) error {
 	umStartChan := make(chan bool)
-	err := logger.InitializeLogger(system.GetAccessPath(), system.GetDebugPath())
+	if system.Interface == "graphic" {
+		config := logger.Config{
+			AccessPath: system.GetAccessPath(),
+			DebugPath:  system.GetDebugPath(),
+			IsMulti:    true,
+			LogWriter:  system.GetLogWriter(),
+		}
+		err := logger.InitializeLogger(config)
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		config := logger.Config{
+			AccessPath: system.GetAccessPath(),
+			DebugPath:  system.GetDebugPath(),
+			IsMulti:    false,
+		}
+		err := logger.InitializeLogger(config)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	privPemByte, err := os.ReadFile(system.LightConfig.PrivateKeyFile)
 	if err != nil {
 		return err
@@ -36,7 +59,7 @@ func Server(system *config.System) error {
 	pbBlock, _ := pem.Decode(pubPemByte)
 	pubKeyByte := pbBlock.Bytes[len(pbBlock.Bytes)-32:]
 	pubKey, err := ntor.NewPublicKey(pubKeyByte)
-
+	system.LightConfig.PublicKey = pubKey.Hex()
 	if err != nil {
 		return err
 	}
@@ -45,7 +68,9 @@ func Server(system *config.System) error {
 		return err
 	}
 	manager.UM.Initialize(system.GetConfigPath())
-
+	if system.Interface == "graphic" {
+		manager.UM.SetSubscribe(system.GetCtx())
+	}
 	go manager.UM.MainRoutine(umStartChan)
 	select {
 	case <-umStartChan:

@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -18,31 +19,45 @@ var (
 //could be nil...
 //For Debug Log, we want it to log file location and code line.
 //For Error Log, we want it to log time. time username id destination
-func InitializeLogger(AccessPath string, DebugPath string) error {
+func InitializeLogger(config Config) error {
+	AccessPath := config.AccessPath
+	DebugPath := config.DebugPath
+	var accessWriter io.Writer
 	switch AccessPath {
 	case "":
+		accessWriter = ioutil.Discard
 		Access = log.New(ioutil.Discard, "Access: ", log.Ldate|log.Ltime)
 	case "STDOUT":
-		Access = log.New(os.Stdout, "Access: ", log.Ldate|log.Ltime)
+		accessWriter = os.Stdout
 	default:
 		file, err := os.OpenFile(AccessPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 		if err != nil {
 			return err
 		}
-		Access = log.New(file, "", log.Ldate|log.Ltime)
-
+		accessWriter = file
 	}
+	if config.IsMulti {
+		accessWriter = io.MultiWriter(config.LogWriter, accessWriter)
+	}
+	Access = log.New(accessWriter, "Access: ", log.Ldate|log.Ltime)
+
+	var debugWriter io.Writer
 	switch DebugPath {
 	case "":
-		Debug = log.New(ioutil.Discard, "Access: ", log.Ldate|log.Ltime)
+		debugWriter = ioutil.Discard
+
 	case "STDOUT":
-		Debug = log.New(os.Stdout, "Debug: ", log.Ldate|log.Ltime|log.Lshortfile)
+		debugWriter = os.Stdout
 	default:
 		file, err := os.OpenFile(DebugPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 		if err != nil {
 			return err
 		}
-		Debug = log.New(file, "", log.Ldate|log.Ltime|log.Lshortfile)
+		debugWriter = file
 	}
+	if config.IsMulti {
+		debugWriter = io.MultiWriter(debugWriter, config.LogWriter)
+	}
+	Debug = log.New(debugWriter, "Debug: ", log.Ldate|log.Ltime|log.Lshortfile)
 	return nil
 }

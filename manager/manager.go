@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"github.com/rayguo17/go-socks/manager/user"
 	"github.com/rayguo17/go-socks/util"
 	"github.com/rayguo17/go-socks/util/logger"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"os"
 	"strings"
 	"time"
@@ -32,6 +34,8 @@ type Manager struct {
 	UploadTrafficChannel  chan *common.UploadTrafficWrap
 	CheckRulesetChannel   chan *common.CheckRulesetWrap
 	PrintConnChannel      chan bool
+	Subscribe             bool
+	SubscribeContext      context.Context
 }
 
 var UM Manager
@@ -48,14 +52,27 @@ func (um *Manager) MainRoutine(startChan chan bool) {
 			um.handleCommand(command)
 		case acpCon := <-um.AddConChannel:
 			um.handleAddCon(acpCon)
+			if um.Subscribe {
+
+				runtime.EventsEmit(um.SubscribeContext, "userChange", "change!")
+			}
 		case id := <-um.DelConChannel:
 			um.handleDelCon(id)
+			if um.Subscribe {
+				runtime.EventsEmit(um.SubscribeContext, "userChange", "change!")
+			}
 		case wrap := <-um.GetUserChannel:
 			um.HandleGetAllUser(wrap)
 		case userWrap := <-um.AddUserChannel:
 			um.handleAddUser(userWrap)
+			if um.Subscribe {
+				runtime.EventsEmit(um.SubscribeContext, "userChange", "change!")
+			}
 		case nameWrap := <-um.DelUserChannel:
 			um.handleDelUser(nameWrap)
+			if um.Subscribe {
+				runtime.EventsEmit(um.SubscribeContext, "userChange", "change!")
+			}
 		case wrap := <-um.ChangePwdChannel:
 			um.handleChangePwd(wrap)
 		case wrap := <-um.TrafficReqChannel:
@@ -64,6 +81,9 @@ func (um *Manager) MainRoutine(startChan chan bool) {
 			um.handleRulesetMod(wrap)
 		case wrap := <-um.UploadTrafficChannel:
 			um.handleTrafficUpload(wrap)
+			if um.Subscribe {
+				runtime.EventsEmit(um.SubscribeContext, "userChange", "change!")
+			}
 		case wrap := <-um.CheckRulesetChannel:
 			um.handleCheckRuleset(wrap)
 		case <-um.PrintConnChannel:
@@ -74,6 +94,7 @@ func (um *Manager) MainRoutine(startChan chan bool) {
 	}
 
 }
+
 func (um *Manager) GetConCommunicator() *common.Communicator {
 	return common.NewCommunicator(um.CheckRulesetChannel, um.UploadTrafficChannel, um.DelConChannel)
 }
@@ -307,4 +328,8 @@ func (um *Manager) Initialize(path string) error {
 	UM.AcpConnections = make(map[string]map[string]*connection.AcpCon)
 	//pp.Println(UM)
 	return nil
+}
+func (um *Manager) SetSubscribe(ctx context.Context) {
+	um.SubscribeContext = ctx
+	um.Subscribe = true
 }

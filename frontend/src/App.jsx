@@ -1,7 +1,7 @@
-import {useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import logo from './assets/images/logo-universal.png';
 import './App.css';
-import {Greet,ListUser} from "../wailsjs/go/app/App";
+import {Greet,ListUser,AddUser,DelUser,GetConfig} from "../wailsjs/go/app/App";
 import Box from '@mui/material/Box'
 import {
     Button, FilledInput,
@@ -14,6 +14,7 @@ import {
     Typography
 } from "@mui/material";
 import {Visibility, Delete} from "@mui/icons-material";
+import {EventsOn} from "../wailsjs/runtime/runtime.js";
 
 const dummy = [
     1,2,3,4,5,6,7,8
@@ -33,17 +34,66 @@ const style = {
 
 function App() {
     const [resultText, setResultText] = useState("Please enter your name below 👇");
+    const [config,setConfig] = useState({state:"init"})
     const [name, setName] = useState('');
     const [users,setUsers] = useState([])
     const [open,setOpen] = useState(false)
+    const [username,setUsername] = useState("")
+    const [pwd,setPwd] = useState("")
     const [white, setWhite] = useState('black');
-    const [accessList,setAccessList]=useState(["www.baidu.com","www.360.com"])
+    const [remote,setRemote] = useState(false)
+    const [remoteAddr,setRemoteAddr] = useState("")
+    const [url,setUrl] = useState("")
+    const [accessList,setAccessList]=useState([])
+    const [pkey,setPkey] = useState("")
+    const [logs,setLogs] = useState([])
+    const logsTemp = useRef([])
+    const logEndRef = useRef(null)
+    const scrollToBottom = () => {
+        logEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    }
+    const handleUname = (e)=>{
+
+        setUsername(e.target.value)
+    }
+
+    useEffect(()=>{
+        //initialize
+
+        EventsOn("userChange",(data)=>{
+            refreshUser()
+        })
+        EventsOn("log",(data)=>{
+            console.log(data)
+            console.log(logsTemp.current.length)
+            logsTemp.current.push(data)
+            setLogs(logsTemp.current)
+            scrollToBottom()
+        })
+        EventsOn("init",(data)=>{
+            console.log(data)
+        })
+        GetConfig().then((resp)=>{
+            console.log(resp)
+            setConfig({
+                state: "done",
+                system:resp.Data
+            })
+        })
+        refreshUser()
+
+    },[])
     const handleChange = (
         event,
         newAlignment,
     ) => {
         setWhite(newAlignment);
     };
+    const handleAddUrl = ()=>{
+        setAccessList([...accessList,url])
+        setUrl("")
+    }
+
     const updateName = (e) => setName(e.target.value);
     const updateResultText = (result) => setResultText(result);
     function handleOpen(){
@@ -53,14 +103,71 @@ function App() {
     setOpen(false)
     }
     async function refreshUser(){
-        console.log("refresh!")
+        //setRefreshFlag(!refreshFlag)
+        //console.log("refresh!")
         let res = await ListUser()
-        console.log(res)
+        //console.log(res)
         setUsers(res)
     }
-    function deleteWebsite(website){
+    function deleteWebsite(url){
         //find and delete
-        console.log(website)
+        setAccessList(accessList.filter((v,i)=>{
+            if (v===url){
+                return false
+            }
+            return true
+        }))
+    }
+    const handleDelUser =async  (delUname)=>{
+        console.log(delUname)
+        let res = await DelUser(delUname)
+        console.log(res)
+        if (res.ErrCode!==0){
+            console.log("delete user fail")
+            console.log(res.ErrMsg)
+            return
+        }else{
+            refreshUser()
+        }
+    }
+    async function handleSubmit(){
+        let newUser = {
+            "username":username,
+            "password":pwd,
+            "access":{
+                "black":white!=="white",
+                "black_list":white!=="white"?accessList:[],
+                "white_list":white==="white"?accessList:[]
+            },
+            "route":{
+                "type":remote?"Remote":"Direct",
+                "remote":remoteAddr,
+                "public_key":pkey,
+                "node_id":"A868303126987902D51F2B6F06DD90038C45B119"
+            }
+        }
+        console.log(newUser)
+        let res = await AddUser(newUser)
+        console.log(res)
+        if (res.ErrCode !==0){
+            console.log(res.ErrMsg)
+        }else{
+            refreshUser()
+            clearForm()
+        }
+        //refresh
+
+    }
+    function clearForm(){
+        setPkey("")
+        setWhite("black")
+        setRemote(false)
+        setRemoteAddr("")
+        setUrl("")
+        setAccessList([])
+        setUsername("")
+        setPwd("")
+        setOpen(false)
     }
     function addUserHandler(){
         //invoke modal to fill in information.
@@ -75,11 +182,22 @@ function App() {
             <div>
                 <h1 className="text-4xl font-bold my-2">Welcome to Yass-server</h1>
             </div>
+            <div>
+                <p>
+                    local socks: {config.state==="init"?"":config.system.socks_port}
+                </p>
+                <p>
+                    light server port: {config.state==="init"?"":config.system.light_config.port}
+                </p>
+                <p>
+                    public key: {config.state==="init"?"":config.system.light_config.PublicKey}
+                </p>
+            </div>
             <div className="my-2">
                 <button onClick={addUserHandler} className="bg-lime-600 px-1 rounded-sm mx-1">Add User</button>
                 <button onClick={refreshUser} className="bg-emerald-100 text-gray-800 px-1 rounded-sm mx-1"> Refresh</button>
             </div>
-            <div className="w-full overflow-auto block h-80 ">
+            <div className="w-full overflow-auto block h-72">
                 <table className="">
                     <thead>
                         <tr className="">
@@ -109,7 +227,7 @@ function App() {
                                 <td>{v.TotalConnection}</td>
                                 <td>{v.Black}</td>
                                 <td className="button-row"><button className="whitespace-nowrap hover:bg-cyan-400 p-1 rounded-md mx-1">查看</button></td>
-                                <td className="button-row"><button className="whitespace-nowrap hover:bg-red-600 p-1 rounded-md mx-1">删除</button></td>
+                                <td onClick={()=>{handleDelUser(v.Username)}} className="button-row"><button className="whitespace-nowrap hover:bg-red-600 p-1 rounded-md mx-1">删除</button></td>
                             </tr>
                         )
                     })}
@@ -126,13 +244,27 @@ function App() {
                 >
                     <Box sx={style}>
                         <h2 className="mb-2 text-3xl">User Config</h2>
-                        <TextField id="filled-basic" label="Username" variant="filled"/>
+                        <FormControl sx={{ mr:1,  width: '25ch' }} variant="filled">
+                            <InputLabel htmlFor="outlined-adornment-uname">Username</InputLabel>
+                            <FilledInput
+                                id="outlined-adornment-password"
+                                type='text'
+                                label="Uname"
+                                size="small"
+                                value={username}
+                                onChange={handleUname}
+                            />
+                        </FormControl>
                         <FormControl sx={{ mx:1,  width: '25ch' }} variant="filled">
                             <InputLabel htmlFor="outlined-adornment-password">Password</InputLabel>
                             <FilledInput
                                 id="outlined-adornment-password"
                                 type='password'
-                                label="Password"/>
+                                label="Password"
+                                size="small"
+                                value={pwd}
+                                onChange={(e)=>{setPwd(e.target.value)}}
+                            />
                         </FormControl>
 
                         <ToggleButtonGroup
@@ -146,10 +278,20 @@ function App() {
                             <ToggleButton value="white">WhiteList</ToggleButton>
                             <ToggleButton value="black">BlackList</ToggleButton>
                         </ToggleButtonGroup>
+                        <div className='mt-1'>
+                            <FormControl variant="filled">
+                                <InputLabel htmlFor="outlined-adornment-url">URL</InputLabel>
+                                <FilledInput
+                                    id="outlined-adornment-url"
+                                    type='text'
+                                    size='small'
+                                    value={url}
+                                    onChange={(e)=>{setUrl(e.target.value)}}
+                                    label="URL"/>
+                            </FormControl>
+                            <Button variant="text" onClick={handleAddUrl}>Add</Button>
+                        </div>
 
-                        <Typography sx={{ mt: 1 }} variant="h6" component="div">
-                            Website
-                        </Typography>
                         <div className="w-1/2">
                             <List dense={true}>
                                 {
@@ -168,17 +310,51 @@ function App() {
 
                             </List>
                         </div>
-
-
+                        <div>
+                            <FormControlLabel control={<Switch onChange={(e)=>{setRemote(e.target.checked)}}  inputProps={{ 'aria-label': 'controlled' }}  value={remote}/>} label="Remote" />
+                            {remote?(
+                                <div>
+                                    <FormControl variant="filled" sx={{mr:1}}>
+                                        <InputLabel htmlFor="outlined-adornment-raddr">remote address</InputLabel>
+                                        <FilledInput
+                                            id="outlined-adornment-raddr"
+                                            type='text'
+                                            size='small'
+                                            value={remoteAddr}
+                                            onChange={(e)=>{setRemoteAddr(e.target.value)}}
+                                            label="raddr"/>
+                                    </FormControl>
+                                    <FormControl variant="filled">
+                                        <InputLabel htmlFor="outlined-adornment-pkey">public key</InputLabel>
+                                        <FilledInput
+                                            id="outlined-adornment-pkey"
+                                            type='text'
+                                            size='small'
+                                            value={pkey}
+                                            onChange={(e)=>{setPkey(e.target.value)}}
+                                            label="pkey"/>
+                                    </FormControl>
+                                </div>
+                            ):(<div></div>)}
+                        </div>
+                        <Button onClick={handleSubmit}>Submit</Button>
                     </Box>
                 </Modal>
             </div>
+            <div className="mt-1 " aria-label="logger">
+                <h3>日志</h3>
+                <div className="max-h-56 overflow-auto" >
+                    {logs.map((v,i)=>{
+                        return (
+                            <p key={i}>{v}</p>
+                        )
+                    })}
+                    <div ref={logEndRef}></div>
+                </div>
 
-            <div id="result" className="result">{resultText}</div>
-            <div id="input" className="input-box">
-                <input id="name" className="input" onChange={updateName} autoComplete="off" name="input" type="text"/>
-                <button className="btn" onClick={greet}>Greet</button>
+
             </div>
+
         </div>
     )
 }

@@ -1,0 +1,23 @@
+{
+  "mode": "product",
+  "interface": "graphic",
+  "socks_port": 5000,
+  "light_config": {
+    "private_key_file": "./x25519-priv.pem",
+    "public_key_file": "./x25519-pub.pem",
+    "node_id": "",
+    "port": 20808
+  },
+  "log": {
+    "debug": "STDOUT",
+    "access": "STDOUT"
+  },
+  "back_door": {
+    "active": false
+  },
+  "api_server": {
+    "active": false,
+    "port": 8080
+  },
+  "user_config": "./user.json"
+}

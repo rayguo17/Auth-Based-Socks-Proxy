@@ -66,6 +66,7 @@ func (um *Manager) handleAddUser(wrap *common.UserWrap) {
 		wrap.InformChan <- res
 		return
 	}
+	wrap.User.SetEnable()
 	um.Users = append(um.Users, wrap.User)
 	userConfig := &Display{
 		Username: wrap.User.GetName(),
@@ -78,7 +79,7 @@ func (um *Manager) handleAddUser(wrap *common.UserWrap) {
 		wrap.InformChan <- res
 		return
 	}
-	res := util.NewResponse(0, "", data)
+	res := util.NewResponse(0, "success", data)
 	wrap.InformChan <- res
 	return
 }
@@ -96,6 +97,7 @@ func (um *Manager) handleDelUser(wrap *common.NameWrap) {
 		return
 	}
 	user.SetDeleted()
+	user.Enable = false
 	um.CheckDeletedUser(user, i)
 	wrap.InformChan <- util.NewResponse(0, "", nil)
 	return

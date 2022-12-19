@@ -22,7 +22,7 @@ type User struct {
 	Access          Access `json:"access"`
 	ActiveConn      int
 	TotalConn       int
-	Route           Route `json:"Route"`
+	Route           Route `json:"route"`
 }
 type Route struct {
 	Type      string `json:"type"`   // Direct | Remote
@@ -130,12 +130,15 @@ func (u *User) GetRoute() string {
 		return "Direct"
 	}
 }
+func (u *User) SetEnable() {
+	u.Enable = true
+}
 
 func (u *User) GetLastSeen() string {
 	initTime := time.Time{}
 	if u.lastSeen.Equal(initTime) {
 		return ""
 	} else {
-		return u.lastSeen.String()
+		return u.lastSeen.Format(time.UnixDate)
 	}
 }
